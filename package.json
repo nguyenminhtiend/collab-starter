@@ -1,0 +1,11 @@
+{
+  "name": "collab-starter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  },
+  "packageManager": "pnpm@10.26.2"
+}
