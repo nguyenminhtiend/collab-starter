@@ -14,37 +14,19 @@ const defaultOptions: DbOptions = {
   connectTimeout: 10,
 };
 
-// Singleton instance for HMR safety
-let dbInstance: PostgresJsDatabase<typeof schema> | null = null;
-let clientInstance: ReturnType<typeof postgres> | null = null;
-
 export const createDb = (
   connectionString: string,
-  options: DbOptions = {}
+  options: DbOptions = {},
 ): PostgresJsDatabase<typeof schema> => {
-  if (dbInstance) {
-    return dbInstance;
-  }
-
   const poolOptions = { ...defaultOptions, ...options };
 
-  clientInstance = postgres(connectionString, {
+  const client = postgres(connectionString, {
     max: poolOptions.max,
     idle_timeout: poolOptions.idleTimeout,
     connect_timeout: poolOptions.connectTimeout,
   });
 
-  dbInstance = drizzle(clientInstance, { schema });
-  return dbInstance;
-};
-
-// Graceful shutdown helper
-export const closeDb = async () => {
-  if (clientInstance) {
-    await clientInstance.end();
-    clientInstance = null;
-    dbInstance = null;
-  }
+  return drizzle(client, { schema });
 };
 
 // Re-export schema and types
