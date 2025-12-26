@@ -20,9 +20,7 @@ serve({
 
 container.logger.info(
   {
-    port,
-    api: `http://localhost:${port}/api/v1`,
-    health: `http://localhost:${port}/health`,
+    url: `http://localhost:${port}`,
   },
-  'Server is running'
+  'Server is running',
 );
