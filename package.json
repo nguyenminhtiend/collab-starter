@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "pnpm -r test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build"
   },
   "packageManager": "pnpm@10.26.2"
 }

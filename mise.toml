@@ -2,8 +2,22 @@
 node = "24.12.0"
 pnpm = "10.26.2"
 
-[tasks]
-dev = "pnpm --filter api dev"
-"db:generate" = "pnpm --filter api db:generate"
-"db:migrate" = "pnpm --filter api db:migrate"
-"db:seed" = "pnpm --filter api db:seed"
+[tasks.dev]
+description = "Run API dev server"
+run = "pnpm --filter api dev"
+
+[tasks."dev:web"]
+description = "Run web dev server"
+run = "pnpm --filter web dev"
+
+[tasks."db:generate"]
+description = "Generate database migrations"
+run = "pnpm --filter api db:generate"
+
+[tasks."db:migrate"]
+description = "Run database migrations"
+run = "pnpm --filter api db:migrate"
+
+[tasks."db:seed"]
+description = "Seed database with initial data"
+run = "pnpm --filter api db:seed"
