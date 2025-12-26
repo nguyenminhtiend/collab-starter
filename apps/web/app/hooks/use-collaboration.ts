@@ -24,12 +24,16 @@ interface UseCollaborationReturn {
 }
 
 const getWebSocketUrl = () => {
-  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+  // Use VITE_WS_URL from environment (required in development, optional in production)
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  // In production without VITE_WS_URL, fall back to same-origin WebSocket
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}`;
   }
-  return 'ws://localhost:3001';
+  throw new Error('VITE_WS_URL environment variable is required');
 };
 const RECONNECT_DELAY = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
