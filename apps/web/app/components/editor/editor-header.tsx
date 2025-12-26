@@ -16,6 +16,7 @@ interface EditorHeaderProps {
   title: string;
   onTitleChange: (title: string) => void;
   lastSaved?: Date;
+  children?: React.ReactNode;
 }
 
 export function EditorHeader({
@@ -23,6 +24,7 @@ export function EditorHeader({
   title,
   onTitleChange,
   lastSaved,
+  children,
 }: EditorHeaderProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [localTitle, setLocalTitle] = useState(title);
@@ -104,6 +106,9 @@ export function EditorHeader({
               <SaveIcon className="h-3.5 w-3.5" />
               <span>{saveStatus.text}</span>
             </div>
+
+            {/* Connection status (from children) */}
+            {children}
 
             {/* Collaborators */}
             <Tooltip>

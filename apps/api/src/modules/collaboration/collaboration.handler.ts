@@ -1,11 +1,16 @@
 import type { Context } from 'hono';
-import type { WSContext } from 'hono/ws';
 import type { Container } from '../../core/container';
 import * as collaborationService from './collaboration.service';
-import type { IncomingMessage, OutgoingMessage } from './collaboration.types';
+import type {
+  IncomingMessage,
+  OutgoingMessage,
+  WSContext,
+  WSMessageEvent,
+} from './collaboration.types';
+import { RoomsManager } from './collaboration.rooms';
 
 export class CollaborationHandler {
-  private documentRooms = new Map<string, Set<any>>();
+  private roomsManager = new RoomsManager();
 
   constructor(private container: Container) {}
 
@@ -14,33 +19,30 @@ export class CollaborationHandler {
     const docId = c.req.param('docId');
 
     return {
-      onOpen: (_event: any, ws: any) => {
+      onOpen: (_event: Event, ws: WSContext) => {
         this.handleOpen(docId, ws);
       },
 
-      onMessage: (event: any, ws: any) => {
+      onMessage: (event: WSMessageEvent, ws: WSContext) => {
         this.handleMessage(docId, event, ws);
       },
 
-      onClose: (_event: any, ws: any) => {
+      onClose: (_event: CloseEvent, ws: WSContext) => {
         this.handleClose(docId, ws);
       },
 
-      onError: (event: any, _ws: any) => {
+      onError: (event: Event, _ws: WSContext) => {
         this.handleError(docId, event);
       },
     };
   }
 
-  private handleOpen(docId: string, ws: any) {
+  private handleOpen(docId: string, ws: WSContext) {
     const { db, logger } = this.container;
     logger.info({ docId }, 'WebSocket connection opened');
 
     // Add client to document room
-    if (!this.documentRooms.has(docId)) {
-      this.documentRooms.set(docId, new Set());
-    }
-    this.documentRooms.get(docId)!.add(ws);
+    this.roomsManager.addClient(docId, ws);
 
     // Send initial snapshot and changes
     (async () => {
@@ -79,7 +81,7 @@ export class CollaborationHandler {
     })();
   }
 
-  private handleMessage(docId: string, event: any, ws: any) {
+  private handleMessage(docId: string, event: WSMessageEvent, ws: WSContext) {
     const { db, logger } = this.container;
 
     try {
@@ -98,29 +100,21 @@ export class CollaborationHandler {
             );
 
             // Broadcast to all clients in the room except sender
-            const clients = this.documentRooms.get(docId);
-            if (clients) {
-              const changesMessage: OutgoingMessage = {
-                type: 'changes',
-                docId,
-                changes: [
-                  {
-                    id: savedChange.id,
-                    data: new Uint8Array(savedChange.data),
-                    userId: savedChange.userId,
-                    createdAt: savedChange.createdAt.toISOString(),
-                  },
-                ],
-              };
+            const changesMessage: OutgoingMessage = {
+              type: 'changes',
+              docId,
+              changes: [
+                {
+                  id: savedChange.id,
+                  data: new Uint8Array(savedChange.data),
+                  userId: savedChange.userId,
+                  createdAt: savedChange.createdAt.toISOString(),
+                },
+              ],
+            };
 
-              const messageStr = JSON.stringify(changesMessage);
-              clients.forEach((client) => {
-                if (client !== ws && client.readyState === 1) {
-                  // 1 = OPEN
-                  client.send(messageStr);
-                }
-              });
-            }
+            const messageStr = JSON.stringify(changesMessage);
+            this.roomsManager.broadcast(docId, messageStr, ws);
 
             // Send ack back to sender
             const ackMessage: OutgoingMessage = {
@@ -139,22 +133,17 @@ export class CollaborationHandler {
     }
   }
 
-  private handleClose(docId: string, ws: any) {
+  private handleClose(docId: string, ws: WSContext) {
     const { logger } = this.container;
     logger.info({ docId }, 'WebSocket connection closed');
 
     // Remove client from document room
-    const clients = this.documentRooms.get(docId);
-    if (clients) {
-      clients.delete(ws);
-      if (clients.size === 0) {
-        this.documentRooms.delete(docId);
-      }
-    }
+    this.roomsManager.removeClient(docId, ws);
   }
 
-  private handleError(docId: string, event: any) {
+  private handleError(docId: string, event: Event) {
     const { logger } = this.container;
-    logger.error({ error: event.error, docId }, 'WebSocket error');
+    const error = event instanceof ErrorEvent ? event.error : event;
+    logger.error({ error, docId }, 'WebSocket error');
   }
 }

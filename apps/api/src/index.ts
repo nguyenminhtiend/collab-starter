@@ -7,7 +7,7 @@ import { createApp } from './app';
 const container = createContainer();
 
 // Create WebSocket adapter first (with placeholder app)
-const { upgradeWebSocket, injectWebSocket } = createNodeWebSocket({ app: null as any });
+const { upgradeWebSocket } = createNodeWebSocket({ app: null as any });
 
 // Create the Hono app with container and WebSocket support
 const app = createApp(container, upgradeWebSocket);
