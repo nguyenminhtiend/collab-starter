@@ -1,6 +1,8 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
+import { env } from '../core/env';
+import { logger } from '../core/logger';
 
 export type DbOptions = {
   max?: number;
@@ -26,7 +28,17 @@ export const createDb = (
     connect_timeout: poolOptions.connectTimeout,
   });
 
-  return drizzle(client, { schema });
+  return drizzle(client, {
+    schema,
+    logger:
+      env.NODE_ENV === 'development'
+        ? {
+            logQuery: (query, params) => {
+              logger.info({ query, params }, 'SQL Query');
+            },
+          }
+        : false,
+  });
 };
 
 // Re-export schema and types
