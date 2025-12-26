@@ -48,6 +48,7 @@ export class CollaborationHandler {
     (async () => {
       try {
         const snapshot = await collaborationService.getLatestSnapshot(db, docId);
+        logger.info({ docId, hasSnapshot: !!snapshot }, 'Checked for existing snapshot');
 
         if (snapshot) {
           const snapshotMessage: OutgoingMessage = {
@@ -73,6 +74,15 @@ export class CollaborationHandler {
               })),
             };
             ws.send(JSON.stringify(changesMessage));
+          } else {
+            // Send empty snapshot if none exists
+            const snapshotMessage: OutgoingMessage = {
+              type: 'snapshot',
+              docId,
+              state: new Uint8Array(),
+              timestamp: new Date().toISOString(),
+            };
+            ws.send(JSON.stringify(snapshotMessage));
           }
         }
       } catch (error) {
@@ -124,6 +134,7 @@ export class CollaborationHandler {
             };
             ws.send(JSON.stringify(ackMessage));
           } catch (error) {
+            logger.error({ error });
             logger.error({ error, docId }, 'Error processing update');
           }
         })();

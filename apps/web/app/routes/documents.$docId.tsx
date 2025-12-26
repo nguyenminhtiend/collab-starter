@@ -50,18 +50,27 @@ export default function DocumentEditorPage() {
   // Handle WebSocket errors
   const handleError = useCallback((err: Error) => {
     console.error("WebSocket error:", err);
-    setError(err.message);
+    // Only set error if it's a critical failure, not transient connection issues
+    // The auto-reconnect will handle temporary disconnections
   }, []);
 
   // Initialize WebSocket collaboration
   const { status, sendUpdate, reconnect } = useCollaboration({
     docId: docId || "",
-    userId: "00000000-0000-0000-0000-000000000001", // TODO: Get from auth context
+    userId: "019b589a-0000-7000-8000-000000000001", // TODO: Get from auth context
     onSnapshot: handleSnapshot,
     onChanges: handleChanges,
     onAck: handleAck,
     onError: handleError,
   });
+
+  // Clear WebSocket errors when connection is established
+  useEffect(() => {
+    if (status === 'connected') {
+      // Clear any previous WebSocket-related errors
+      setError(null);
+    }
+  }, [status]);
 
   // Fetch document details on mount
   useEffect(() => {

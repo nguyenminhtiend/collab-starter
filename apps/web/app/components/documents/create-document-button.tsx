@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
@@ -10,11 +11,10 @@ export function CreateDocumentButton({ onCreate }: CreateDocumentButtonProps) {
     <Button
       onClick={onCreate}
       size="lg"
-      className="gap-2 btn-accent glow-primary"
+      className="gap-2"
     >
       <Plus className="h-5 w-5" />
-      <span className="hidden sm:inline">New Document</span>
-      <span className="sm:hidden">New</span>
+      Create New Document
     </Button>
   );
 }

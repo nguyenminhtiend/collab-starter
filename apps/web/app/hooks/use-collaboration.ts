@@ -23,7 +23,14 @@ interface UseCollaborationReturn {
   reconnect: () => void;
 }
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+const getWebSocketUrl = () => {
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
+  }
+  return 'ws://localhost:3001';
+};
 const RECONNECT_DELAY = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -86,7 +93,7 @@ export function useCollaboration({
     setStatus(ConnectionStatus.CONNECTING);
 
     try {
-      const ws = new WebSocket(`${WS_URL}/collaboration/${docId}`);
+      const ws = new WebSocket(`${getWebSocketUrl()}/collaboration/${docId}`);
 
       ws.onopen = () => {
         console.log('WebSocket connected');

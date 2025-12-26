@@ -4,7 +4,15 @@ pnpm = "10.26.2"
 
 [tasks.dev]
 description = "Run API dev server"
+depends = ["dev:api", "dev:ws"]
+
+[tasks."dev:api"]
+description = "Run API http server"
 run = "pnpm --filter api dev"
+
+[tasks."dev:ws"]
+description = "Run WebSocket server"
+run = "pnpm --filter server dev"
 
 [tasks."dev:web"]
 description = "Run web dev server"

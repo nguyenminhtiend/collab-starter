@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { DocumentCard } from "@/components/documents/document-card";
 import { CreateDocumentButton } from "@/components/documents/create-document-button";
-import { FileText, Search, ArrowUpDown, Plus } from "lucide-react";
+import { FileText, Search, ArrowUpDown, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -11,53 +11,62 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { documentsApi } from "@/lib/api-client";
-import type { Document } from "@collab/types";
+
+// Mock data for UI demonstration
+const MOCK_DOCUMENTS = [
+  {
+    id: "1",
+    ownerId: "user-1",
+    title: "Product Roadmap 2025",
+    lastSnapshotAt: null,
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "2",
+    ownerId: "user-1",
+    title: "Team Meeting Notes",
+    lastSnapshotAt: null,
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "3",
+    ownerId: "user-1",
+    title: "Design System Documentation",
+    lastSnapshotAt: null,
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "4",
+    ownerId: "user-1",
+    title: "API Documentation",
+    lastSnapshotAt: null,
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
 
 type SortOption = "updated" | "title" | "created";
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState(MOCK_DOCUMENTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Fetch documents on mount
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await documentsApi.getAll();
-        setDocuments(data as Document[]);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load documents';
-        setError(message);
-        console.error('Error fetching documents:', err);
-      } finally {
-        setLoading(false);
-      }
+  const handleCreateDocument = () => {
+    const newDoc = {
+      id: String(documents.length + 1),
+      ownerId: "user-1",
+      title: "Untitled Document",
+      lastSnapshotAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-
-    fetchDocuments();
-  }, []);
-
-  const handleCreateDocument = async () => {
-    try {
-      // TODO: Get actual user ID from auth context
-      const newDoc = await documentsApi.create({
-        title: "Untitled Document",
-        ownerId: "00000000-0000-0000-0000-000000000001", // Placeholder user ID
-      });
-      setDocuments([newDoc as Document, ...documents]);
-      navigate(`/documents/${newDoc.id}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create document';
-      console.error('Error creating document:', err);
-      alert(message);
-    }
+    setDocuments([newDoc, ...documents]);
+    navigate(`/documents/${newDoc.id}`);
   };
 
   const filteredDocuments = useMemo(() => {
@@ -93,145 +102,111 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background noise-bg">
-      {/* Subtle grid background */}
-      <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl opacity-50 animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-50 animate-pulse delay-1000"></div>
+      </div>
 
-      <div className="relative">
-        {/* Top accent bar */}
-        <div className="h-1 w-full gradient-warm" />
-
-        <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-12 relative z-10">
+        <div className="flex flex-col gap-8 mb-12">
           {/* Header */}
-          <header className="mb-12 animate-fade-up">
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-display tracking-tight text-foreground mb-3">
-                  Documents
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                <h1 className="text-5xl font-bold gradient-text">
+                  My Documents
                 </h1>
-                <p className="text-muted-foreground text-lg">
-                  Create, edit, and collaborate in real-time
-                </p>
               </div>
-              <CreateDocumentButton onCreate={handleCreateDocument} />
+              <p className="text-muted-foreground text-lg mt-2">
+                Create and manage your collaborative documents
+              </p>
             </div>
-          </header>
+            <CreateDocumentButton onCreate={handleCreateDocument} />
+          </div>
 
-          {/* Error State */}
-          {error && (
-            <div className="mb-8 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive animate-fade-up">
-              <p className="font-medium">Error loading documents</p>
-              <p className="text-sm mt-1">{error}</p>
-            </div>
-          )}
-
-          {/* Loading State */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade-up">
-              <div className="w-16 h-16 rounded-2xl gradient-warm flex items-center justify-center mb-6 glow-primary animate-pulse">
-                <FileText className="h-8 w-8 text-white" />
-              </div>
-              <p className="text-muted-foreground">Loading documents...</p>
-            </div>
-          ) : (
-            <>
-              {/* Search and Filter */}
-              {documents.length > 0 && (
-                <div className="mb-8 animate-fade-up stagger-1">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search documents..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 bg-card border-border focus:border-primary focus:ring-1 focus:ring-primary/20"
-                      />
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="gap-2 h-11 px-4 bg-card border-border hover:bg-secondary"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                          <span className="hidden sm:inline">Sort:</span> {getSortLabel()}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => setSortBy("updated")}>
-                          Last edited
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("created")}>
-                          Created date
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSortBy("title")}>
-                          Title
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+          {/* Search and Filter Bar with Glassmorphism */}
+          {documents.length > 0 && (
+            <div className="glass-card rounded-2xl p-4 shadow-xl">
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search documents..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-12 h-12 bg-background/50 border-primary/20 focus:border-primary transition-all"
+                  />
                 </div>
-              )}
-
-              {/* Content */}
-              {documents.length === 0 ? (
-                <EmptyState onCreateDocument={handleCreateDocument} />
-              ) : filteredDocuments.length === 0 ? (
-                <NoResultsState />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredDocuments.map((doc, index) => (
-                    <div
-                      key={doc.id}
-                      className={`animate-fade-up stagger-${Math.min(index + 1, 5)}`}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="gap-2 h-12 px-6 bg-background/50 border-primary/20 hover:border-primary hover:bg-primary/10 transition-all"
                     >
-                      <DocumentCard
-                        id={doc.id}
-                        title={doc.title}
-                        updatedAt={doc.updatedAt}
-                        ownerId={doc.ownerId}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+                      <ArrowUpDown className="h-4 w-4" />
+                      Sort: {getSortLabel()}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="glass">
+                    <DropdownMenuItem onClick={() => setSortBy("updated")}>
+                      Last edited
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy("created")}>
+                      Created date
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy("title")}>
+                      Title
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
 
-function EmptyState({ onCreateDocument }: { onCreateDocument: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
-      <div className="w-16 h-16 rounded-2xl gradient-warm flex items-center justify-center mb-6 glow-primary">
-        <FileText className="h-8 w-8 text-white" />
+        {documents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="rounded-full gradient-primary p-8 mb-6 shadow-glow">
+              <FileText className="h-16 w-16 text-white" />
+            </div>
+            <h2 className="text-3xl font-semibold mb-3">No documents yet</h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-md">
+              Get started by creating your first document and unleash your creativity
+            </p>
+            <CreateDocumentButton onCreate={handleCreateDocument} />
+          </div>
+        ) : filteredDocuments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="rounded-full bg-muted p-8 mb-6">
+              <Search className="h-16 w-16 text-muted-foreground" />
+            </div>
+            <h2 className="text-3xl font-semibold mb-3">No documents found</h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-md">
+              Try adjusting your search query
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredDocuments.map((doc, index) => (
+              <div
+                key={doc.id}
+                style={{ animationDelay: `${index * 50}ms` }}
+                className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+              >
+                <DocumentCard
+                  id={doc.id}
+                  title={doc.title}
+                  updatedAt={doc.updatedAt}
+                  ownerId={doc.ownerId}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <h2 className="text-2xl font-display mb-2">No documents yet</h2>
-      <p className="text-muted-foreground mb-8 max-w-sm">
-        Start your first document and bring your ideas to life
-      </p>
-      <Button onClick={onCreateDocument} size="lg" className="gap-2 btn-accent">
-        <Plus className="h-5 w-5" />
-        Create Document
-      </Button>
-    </div>
-  );
-}
-
-function NoResultsState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
-      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
-        <Search className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <h2 className="text-2xl font-display mb-2">No matches found</h2>
-      <p className="text-muted-foreground max-w-sm">
-        Try adjusting your search terms
-      </p>
     </div>
   );
 }

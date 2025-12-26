@@ -1,4 +1,6 @@
-import { FileText, MoreHorizontal, Edit3, Copy, Trash2, ExternalLink } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FileText, MoreVertical, Edit, Copy, Trash2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router";
 import {
@@ -29,7 +31,7 @@ export function DocumentCard({ id, title, updatedAt, ownerId }: DocumentCardProp
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return d.toLocaleDateString();
   };
 
   const handleAction = (e: React.MouseEvent, action: string) => {
@@ -39,68 +41,74 @@ export function DocumentCard({ id, title, updatedAt, ownerId }: DocumentCardProp
   };
 
   return (
-    <Link
-      to={`/documents/${id}`}
-      className="group block rounded-xl card-elevated hover-lift focus-ring transition-all duration-200"
-    >
-      <div className="p-5">
-        {/* Top row: Icon and menu */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="w-10 h-10 rounded-lg gradient-warm flex items-center justify-center flex-shrink-0">
-            <FileText className="h-5 w-5 text-white" />
+    <Card className="glass-card hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:-translate-y-1 group relative overflow-hidden border-primary/10">
+      {/* Gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/0 via-primary/0 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+      <Link to={`/documents/${id}`} className="block relative z-10">
+        <CardHeader className="pb-3">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl gradient-primary p-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+              <FileText className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="text-lg font-semibold group-hover:gradient-text transition-all duration-300 line-clamp-2">
+                  {title || "Untitled Document"}
+                </CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-shrink-0 h-8 w-8 hover:bg-primary/10"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 glass">
+                    <DropdownMenuItem onClick={(e) => handleAction(e, "open")}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Open
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => handleAction(e, "rename")}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => handleAction(e, "duplicate")}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={(e) => handleAction(e, "delete")}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <CardDescription className="mt-2 flex items-center gap-2">
+                <span className="text-sm">Edited {formatDate(updatedAt)}</span>
+              </CardDescription>
+            </div>
           </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={(e) => handleAction(e, "open")}>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Open
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => handleAction(e, "rename")}>
-                <Edit3 className="mr-2 h-4 w-4" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => handleAction(e, "duplicate")}>
-                <Copy className="mr-2 h-4 w-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => handleAction(e, "delete")}
-                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Title */}
-        <h3 className="font-display text-lg font-medium text-foreground mb-1.5 line-clamp-2 group-hover:text-primary transition-colors">
-          {title || "Untitled Document"}
-        </h3>
-
-        {/* Meta */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{formatDate(updatedAt)}</span>
-          <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
-          <span className="truncate">{ownerId}</span>
-        </div>
-      </div>
-
-      {/* Bottom accent line on hover */}
-      <div className="h-0.5 w-0 group-hover:w-full bg-primary/60 transition-all duration-300 rounded-b-xl" />
-    </Link>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+              Draft
+            </Badge>
+            <span className="text-xs text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground truncate">
+              {ownerId}
+            </span>
+          </div>
+        </CardContent>
+      </Link>
+    </Card>
   );
 }

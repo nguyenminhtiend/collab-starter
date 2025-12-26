@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, Share2, Check, Cloud } from "lucide-react";
+import { ArrowLeft, Share2, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import {
   Tooltip,
@@ -16,7 +16,6 @@ interface EditorHeaderProps {
   title: string;
   onTitleChange: (title: string) => void;
   lastSaved?: Date;
-  children?: React.ReactNode;
 }
 
 export function EditorHeader({
@@ -24,7 +23,6 @@ export function EditorHeader({
   title,
   onTitleChange,
   lastSaved,
-  children,
 }: EditorHeaderProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [localTitle, setLocalTitle] = useState(title);
@@ -34,41 +32,38 @@ export function EditorHeader({
     setIsEditingTitle(false);
   };
 
-  const getSaveStatus = (date?: Date) => {
-    if (!date) return { text: "Not saved", icon: Cloud };
+  const formatLastSaved = (date?: Date) => {
+    if (!date) return "Not saved";
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
 
-    if (diffSecs < 10) return { text: "Saving...", icon: Cloud };
-    return { text: "Saved", icon: Check };
+    if (diffSecs < 10) return "Saving...";
+    if (diffSecs < 60) return "Saved just now";
+    return `Saved ${Math.floor(diffSecs / 60)}m ago`;
   };
 
-  const saveStatus = getSaveStatus(lastSaved);
-  const SaveIcon = saveStatus.icon;
-
   return (
-    <TooltipProvider delayDuration={200}>
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center justify-between gap-4 px-4 h-14">
-          {/* Left: Back + Title */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+    <TooltipProvider delayDuration={300}>
+      <div className="border-b glass-card backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 flex-shrink-0 hover:bg-secondary"
+                    className="flex-shrink-0 hover:bg-primary/10 hover:text-primary transition-all"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-5 w-5" />
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Back to documents</TooltipContent>
+              <TooltipContent>
+                <p>Back to documents</p>
+              </TooltipContent>
             </Tooltip>
-
-            <div className="h-5 w-px bg-border" />
 
             <div className="flex-1 min-w-0">
               {isEditingTitle ? (
@@ -84,59 +79,64 @@ export function EditorHeader({
                     }
                   }}
                   autoFocus
-                  className="h-9 text-base font-display font-medium bg-transparent border-primary/30 focus:border-primary"
+                  className="text-lg font-semibold h-10 px-3 bg-background/50 border-primary/20 focus:border-primary"
                 />
               ) : (
-                <button
-                  onClick={() => setIsEditingTitle(true)}
-                  className="flex items-center gap-2 group text-left w-full"
-                >
-                  <span className="font-display text-base font-medium truncate group-hover:text-primary transition-colors">
+                <div>
+                  <h1
+                    className="text-xl font-bold cursor-pointer hover:gradient-text transition-all duration-300 truncate"
+                    onClick={() => setIsEditingTitle(true)}
+                  >
                     {title || "Untitled Document"}
-                  </span>
-                </button>
+                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    <p className="text-xs text-muted-foreground">
+                      {formatLastSaved(lastSaved)}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Right: Status + Collaborators + Share */}
-          <div className="flex items-center gap-4 flex-shrink-0">
-            {/* Save status */}
-            <div className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground">
-              <SaveIcon className="h-3.5 w-3.5" />
-              <span>{saveStatus.text}</span>
-            </div>
-
-            {/* Connection status (from children) */}
-            {children}
-
-            {/* Collaborators */}
+          <div className="flex items-center gap-3 flex-shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex -space-x-2">
-                  <Avatar className="h-7 w-7 border-2 border-card">
-                    <AvatarFallback className="text-xs font-medium gradient-warm text-white">
-                      YO
-                    </AvatarFallback>
-                  </Avatar>
-                  <Avatar className="h-7 w-7 border-2 border-card">
-                    <AvatarFallback className="text-xs font-medium bg-secondary text-secondary-foreground">
-                      +2
-                    </AvatarFallback>
-                  </Avatar>
+                <div className="flex items-center gap-2 cursor-default">
+                  <div className="flex -space-x-2">
+                    <Avatar className="h-8 w-8 border-2 border-background ring-2 ring-primary/20">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-purple-500 text-white text-xs font-semibold">
+                        YO
+                      </AvatarFallback>
+                    </Avatar>
+                    <Avatar className="h-8 w-8 border-2 border-background ring-2 ring-primary/20">
+                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs font-semibold">
+                        +2
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent>3 collaborators online</TooltipContent>
+              <TooltipContent>
+                <p>3 collaborators online</p>
+              </TooltipContent>
             </Tooltip>
 
-            {/* Share button */}
-            <Button size="sm" className="gap-2 btn-accent h-8 px-3">
-              <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Share</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button className="gap-2 gradient-primary hover:opacity-90 transition-opacity shadow-lg">
+                  <Share2 className="h-4 w-4" />
+                  <span className="hidden sm:inline font-semibold">Share</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Share document</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
-      </header>
+      </div>
     </TooltipProvider>
   );
 }
