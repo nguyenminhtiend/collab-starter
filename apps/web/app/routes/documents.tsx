@@ -12,15 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { documentsApi } from "@/lib/api-client";
-
-type Document = {
-  id: string;
-  ownerId: string;
-  title: string;
-  lastSnapshotAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+import type { Document } from "@collab/types";
 
 type SortOption = "updated" | "title" | "created";
 

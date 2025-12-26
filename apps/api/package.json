@@ -13,6 +13,7 @@
     "db:seed": "tsx --env-file=.env src/db/seed.ts"
   },
   "dependencies": {
+    "@collab/types": "workspace:*",
     "@hono/node-server": "^1.8.0",
     "@hono/zod-validator": "^0.7.6",
     "drizzle-orm": "^0.45.1",
