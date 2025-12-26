@@ -14,8 +14,8 @@ export const createApp = (container: Container) => {
     // Global middleware
     .use('*', pinoLogger({ pino: container.logger }))
     // Mount feature modules
-    .route('/api/v1/users', createUsersRoutes(container))
-    .route('/api/v1/documents', createDocumentsRoutes(container));
+    .route('/api/users', createUsersRoutes(container))
+    .route('/api/documents', createDocumentsRoutes(container));
 
   // Error handling
   app.onError(errorHandler);
