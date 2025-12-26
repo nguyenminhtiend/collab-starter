@@ -1,3 +1,4 @@
+import { createNodeWebSocket } from '@hono/node-ws';
 import { serve } from '@hono/node-server';
 import { createContainer } from './core/container';
 import { createApp } from './app';
@@ -5,22 +6,34 @@ import { createApp } from './app';
 // Initialize container (validates env, connects to DB)
 const container = createContainer();
 
-// Create the Hono app with container
-const app = createApp(container);
+// Create WebSocket adapter first (with placeholder app)
+const { upgradeWebSocket, injectWebSocket } = createNodeWebSocket({ app: null as any });
+
+// Create the Hono app with container and WebSocket support
+const app = createApp(container, upgradeWebSocket);
+
+// Update WebSocket with the actual app
+const ws = createNodeWebSocket({ app });
 
 // Start the server
 const port = container.env.PORT;
 
 container.logger.info({ port }, 'Starting server...');
 
-serve({
-  fetch: app.fetch,
-  port,
-});
-
-container.logger.info(
+const server = serve(
   {
-    url: `http://localhost:${port}`,
+    fetch: app.fetch,
+    port,
   },
-  'Server is running',
+  (info) => {
+    container.logger.info(
+      {
+        url: `http://localhost:${info.port}`,
+      },
+      'Server is running with WebSocket support',
+    );
+  },
 );
+
+// Inject WebSocket into the running server
+ws.injectWebSocket(server);

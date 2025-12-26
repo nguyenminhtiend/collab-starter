@@ -6,8 +6,9 @@ import type { Container } from './core/container';
 import { errorHandler, notFoundHandler } from './core/middleware/error-handler';
 import { createUsersRoutes } from './modules/users';
 import { createDocumentsRoutes } from './modules/documents';
+import { createCollaborationRoutes } from './modules/collaboration';
 
-export const createApp = (container: Container) => {
+export const createApp = (container: Container, upgradeWebSocket: any) => {
   const app = new Hono()
     // CORS middleware
     .use('*', cors())
@@ -15,7 +16,8 @@ export const createApp = (container: Container) => {
     .use('*', pinoLogger({ pino: container.logger }))
     // Mount feature modules
     .route('/api/users', createUsersRoutes(container))
-    .route('/api/documents', createDocumentsRoutes(container));
+    .route('/api/documents', createDocumentsRoutes(container))
+    .route('/collaboration', createCollaborationRoutes(container, upgradeWebSocket));
 
   // Error handling
   app.onError(errorHandler);
