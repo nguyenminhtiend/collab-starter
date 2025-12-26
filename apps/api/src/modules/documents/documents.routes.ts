@@ -8,6 +8,11 @@ export const createDocumentsRoutes = (container: Container) => {
   const { db } = container;
 
   return new Hono()
+    .get('/', async (c) => {
+      const documents = await documentsService.getAllDocuments(db);
+      return c.json(documents);
+    })
+
     .get('/:id', zValidator('param', DocumentIdParamSchema), async (c) => {
       const { id } = c.req.valid('param');
       const document = await documentsService.getDocumentById(db, id);

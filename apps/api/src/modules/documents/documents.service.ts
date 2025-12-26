@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { NotFoundError } from '../../core/errors';
 import { documents } from '../../db/schema/documents';
 import type { Database } from '../../db/types';
@@ -17,4 +17,8 @@ export const getDocumentById = async (db: Database, id: string) => {
 export const createDocument = async (db: Database, data: CreateDocument) => {
   const result = await db.insert(documents).values(data).returning();
   return result[0]!;
+};
+
+export const getAllDocuments = async (db: Database) => {
+  return await db.select().from(documents).orderBy(desc(documents.updatedAt));
 };

@@ -1,5 +1,6 @@
 import { createDb } from './index';
 import { users } from './schema/users';
+import { documents } from './schema/documents';
 
 const seed = async () => {
   const connectionString = process.env.DATABASE_URL;
@@ -23,18 +24,58 @@ const seed = async () => {
 
     // Seed users
     console.log('📝 Seeding users...');
-    await db.insert(users).values([
+    const seededUsers = await db
+      .insert(users)
+      .values([
+        {
+          name: 'John Doe',
+          email: 'john@example.com',
+        },
+        {
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+        },
+        {
+          name: 'Bob Johnson',
+          email: 'bob@example.com',
+        },
+      ])
+      .returning();
+
+    // Seed documents
+    console.log('📄 Seeding documents...');
+    await db.insert(documents).values([
       {
-        name: 'John Doe',
-        email: 'john@example.com',
+        ownerId: seededUsers[0]!.id,
+        title: 'Getting Started with React',
       },
       {
-        name: 'Jane Smith',
-        email: 'jane@example.com',
+        ownerId: seededUsers[0]!.id,
+        title: 'TypeScript Best Practices 2025',
       },
       {
-        name: 'Bob Johnson',
-        email: 'bob@example.com',
+        ownerId: seededUsers[1]!.id,
+        title: 'Introduction to Hono Framework',
+      },
+      {
+        ownerId: seededUsers[1]!.id,
+        title: 'Building Real-time Collaboration Apps',
+      },
+      {
+        ownerId: seededUsers[2]!.id,
+        title: 'Database Migration Strategies',
+      },
+      {
+        ownerId: seededUsers[2]!.id,
+        title: 'Modern Web Development Trends',
+      },
+      {
+        ownerId: seededUsers[0]!.id,
+        title: 'Project Planning Template',
+      },
+      {
+        ownerId: seededUsers[1]!.id,
+        title: 'Team Meeting Notes - Q1 2025',
       },
     ]);
 
