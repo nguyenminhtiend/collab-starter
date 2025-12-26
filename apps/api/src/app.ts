@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { pinoLogger } from 'hono-pino';
 import type { Container } from './core/container';
 
@@ -8,6 +9,8 @@ import { createDocumentsRoutes } from './modules/documents';
 
 export const createApp = (container: Container) => {
   const app = new Hono()
+    // CORS middleware
+    .use('*', cors())
     // Global middleware
     .use('*', pinoLogger({ pino: container.logger }))
     // Mount feature modules

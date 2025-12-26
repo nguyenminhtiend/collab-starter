@@ -1,64 +1,42 @@
-import type { Document, CreateDocumentRequest, UpdateDocumentRequest } from './types';
+import { hc } from 'hono/client';
+import type { AppType } from '../../../api/src/app';
 
-// TODO: Update this with your actual API URL
+// API Base URL - defaults to localhost:3000 where the Hono API runs
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-class ApiClient {
-  private baseUrl: string;
+// Create typed Hono RPC client
+const client = hc<AppType>(API_BASE_URL);
 
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
-  }
+// Export the RPC client for direct usage
+export const rpcClient = client;
 
-  private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
-
+// Document API methods with proper type safety
+export const documentsApi = {
+  async getAll() {
+    const response = await client.api.v1.documents.$get();
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: 'An error occurred',
-      }));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      throw new Error(`Failed to fetch documents: ${response.statusText}`);
     }
+    return await response.json();
+  },
 
-    return response.json();
-  }
-
-  // Document operations
-  async getDocuments(): Promise<Document[]> {
-    return this.fetch<Document[]>('/api/documents');
-  }
-
-  async getDocument(id: string): Promise<Document> {
-    return this.fetch<Document>(`/api/documents/${id}`);
-  }
-
-  async createDocument(data: CreateDocumentRequest): Promise<Document> {
-    return this.fetch<Document>('/api/documents', {
-      method: 'POST',
-      body: JSON.stringify(data),
+  async getById(id: string) {
+    const response = await client.api.v1.documents[':id'].$get({
+      param: { id },
     });
-  }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch document: ${response.statusText}`);
+    }
+    return await response.json();
+  },
 
-  async updateDocument(id: string, data: UpdateDocumentRequest): Promise<Document> {
-    return this.fetch<Document>(`/api/documents/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
+  async create(data: { title?: string; ownerId: string }) {
+    const response = await client.api.v1.documents.$post({
+      json: data,
     });
-  }
-
-  async deleteDocument(id: string): Promise<void> {
-    return this.fetch<void>(`/api/documents/${id}`, {
-      method: 'DELETE',
-    });
-  }
-}
-
-export const apiClient = new ApiClient();
+    if (!response.ok) {
+      throw new Error(`Failed to create document: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+};
