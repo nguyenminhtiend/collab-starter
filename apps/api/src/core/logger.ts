@@ -14,6 +14,15 @@ export const logger = pino({
           },
         }
       : undefined,
+  serializers: {
+    req: (req) => ({
+      method: req.method,
+      url: req.url,
+    }),
+    res: (res) => ({
+      status: res.status,
+    }),
+  },
 });
 
 export type Logger = typeof logger;
