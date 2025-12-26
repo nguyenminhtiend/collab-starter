@@ -43,7 +43,7 @@ export function DocumentCard({ id, title, updatedAt, ownerId }: DocumentCardProp
   return (
     <Card className="glass-card hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:-translate-y-1 group relative overflow-hidden border-primary/10">
       {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/0 via-primary/0 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/0 via-primary/0 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
 
       <Link to={`/documents/${id}`} className="block relative z-10">
         <CardHeader className="pb-3">

@@ -26,6 +26,14 @@ export const getChangesSince = async (
     .orderBy(documentChanges.createdAt);
 };
 
+export const getAllChanges = async (db: PostgresJsDatabase<typeof schema>, docId: string) => {
+  return db
+    .select()
+    .from(documentChanges)
+    .where(eq(documentChanges.docId, docId))
+    .orderBy(documentChanges.createdAt);
+};
+
 export const saveChange = async (
   db: PostgresJsDatabase<typeof schema>,
   docId: string,

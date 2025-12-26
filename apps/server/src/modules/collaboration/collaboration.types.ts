@@ -11,7 +11,7 @@ export interface WebSocketMessage {
 export interface SnapshotMessage extends WebSocketMessage {
   type: 'snapshot';
   docId: string;
-  state: Uint8Array;
+  state: number[]; // JSON-serializable array (converted from Uint8Array)
   timestamp: string;
 }
 
@@ -20,7 +20,7 @@ export interface ChangesMessage extends WebSocketMessage {
   docId: string;
   changes: Array<{
     id: string;
-    data: Uint8Array;
+    data: number[]; // JSON-serializable array (converted from Uint8Array)
     userId: string | null;
     createdAt: string;
   }>;

@@ -51,10 +51,11 @@ export class CollaborationHandler {
         logger.info({ docId, hasSnapshot: !!snapshot }, 'Checked for existing snapshot');
 
         if (snapshot) {
+          // Send existing snapshot
           const snapshotMessage: OutgoingMessage = {
             type: 'snapshot',
             docId,
-            state: new Uint8Array(snapshot.state),
+            state: Array.from(new Uint8Array(snapshot.state)),
             timestamp: snapshot.createdAt.toISOString(),
           };
           ws.send(JSON.stringify(snapshotMessage));
@@ -68,21 +69,39 @@ export class CollaborationHandler {
               docId,
               changes: changes.map((change) => ({
                 id: change.id,
-                data: new Uint8Array(change.data),
+                data: Array.from(new Uint8Array(change.data)),
                 userId: change.userId,
                 createdAt: change.createdAt.toISOString(),
               })),
             };
             ws.send(JSON.stringify(changesMessage));
-          } else {
-            // Send empty snapshot if none exists
-            const snapshotMessage: OutgoingMessage = {
-              type: 'snapshot',
+          }
+        } else {
+          // No snapshot - send empty snapshot first, then all changes
+          const emptySnapshotMessage: OutgoingMessage = {
+            type: 'snapshot',
+            docId,
+            state: [],
+            timestamp: new Date().toISOString(),
+          };
+          ws.send(JSON.stringify(emptySnapshotMessage));
+
+          // Fetch and send all changes for this document
+          const changes = await collaborationService.getAllChanges(db, docId);
+          logger.info({ docId, changesCount: changes.length }, 'Fetched all changes (no snapshot)');
+
+          if (changes.length > 0) {
+            const changesMessage: OutgoingMessage = {
+              type: 'changes',
               docId,
-              state: new Uint8Array(),
-              timestamp: new Date().toISOString(),
+              changes: changes.map((change) => ({
+                id: change.id,
+                data: Array.from(new Uint8Array(change.data)),
+                userId: change.userId,
+                createdAt: change.createdAt.toISOString(),
+              })),
             };
-            ws.send(JSON.stringify(snapshotMessage));
+            ws.send(JSON.stringify(changesMessage));
           }
         }
       } catch (error) {
@@ -116,7 +135,7 @@ export class CollaborationHandler {
               changes: [
                 {
                   id: savedChange.id,
-                  data: new Uint8Array(savedChange.data),
+                  data: Array.from(new Uint8Array(savedChange.data)),
                   userId: savedChange.userId,
                   createdAt: savedChange.createdAt.toISOString(),
                 },

@@ -23,22 +23,23 @@ export default function DocumentEditorPage() {
   const handleSnapshot = useCallback((snapshot: SnapshotMessage) => {
     console.log("Received snapshot:", snapshot);
     const decoder = new TextDecoder();
-    const decodedContent = decoder.decode(snapshot.state);
+    const state = new Uint8Array(snapshot.state);
+    const decodedContent = decoder.decode(state);
     setContent(decodedContent);
   }, []);
 
   // Handle changes from WebSocket
   const handleChanges = useCallback((changes: ChangesMessage) => {
     console.log("Received changes:", changes);
-    // For now, just log changes. In a real implementation,
-    // you'd apply operational transforms or CRDT updates
-    changes.changes.forEach((change) => {
+    // Apply changes to the document content
+    // Since we're using simple text replacement (not OT/CRDT), take the last change
+    if (changes.changes.length > 0) {
+      const lastChange = changes.changes[changes.changes.length - 1];
       const decoder = new TextDecoder();
-      const decodedChange = decoder.decode(change.data);
-      console.log("Change:", decodedChange);
-      // In production, apply the change to the document
-      // For now, we'll refetch or use simple replacement
-    });
+      const data = new Uint8Array(lastChange.data);
+      const decodedContent = decoder.decode(data);
+      setContent(decodedContent);
+    }
   }, []);
 
   // Handle acknowledgment from WebSocket

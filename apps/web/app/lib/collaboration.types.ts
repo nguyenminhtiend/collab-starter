@@ -17,13 +17,13 @@ export interface WebSocketMessage {
 export interface SnapshotMessage extends WebSocketMessage {
   type: 'snapshot';
   docId: string;
-  state: Uint8Array;
+  state: number[]; // JSON-serialized array (convert to Uint8Array for decoding)
   timestamp: string;
 }
 
 export interface Change {
   id: string;
-  data: Uint8Array;
+  data: number[]; // JSON-serialized array (convert to Uint8Array for decoding)
   userId: string | null;
   createdAt: string;
 }
@@ -37,7 +37,7 @@ export interface ChangesMessage extends WebSocketMessage {
 export interface UpdateMessage extends WebSocketMessage {
   type: 'update';
   docId: string;
-  data: Uint8Array;
+  data: number[]; // JSON-serialized array for sending to server
   userId?: string;
 }
 

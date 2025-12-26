@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { DocumentCard } from "@/components/documents/document-card";
 import { CreateDocumentButton } from "@/components/documents/create-document-button";
-import { FileText, Search, ArrowUpDown, Sparkles } from "lucide-react";
+import { FileText, Search, ArrowUpDown, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -11,62 +11,50 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-
-// Mock data for UI demonstration
-const MOCK_DOCUMENTS = [
-  {
-    id: "1",
-    ownerId: "user-1",
-    title: "Product Roadmap 2025",
-    lastSnapshotAt: null,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "2",
-    ownerId: "user-1",
-    title: "Team Meeting Notes",
-    lastSnapshotAt: null,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "3",
-    ownerId: "user-1",
-    title: "Design System Documentation",
-    lastSnapshotAt: null,
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "4",
-    ownerId: "user-1",
-    title: "API Documentation",
-    lastSnapshotAt: null,
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
+import { documentsApi } from "@/lib/api-client";
+import type { Document } from "@collab/types";
 
 type SortOption = "updated" | "title" | "created";
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState(MOCK_DOCUMENTS);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch documents on mount
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await documentsApi.getAll();
+        setDocuments(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load documents");
+        console.error("Error fetching documents:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDocuments();
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
 
-  const handleCreateDocument = () => {
-    const newDoc = {
-      id: String(documents.length + 1),
-      ownerId: "user-1",
-      title: "Untitled Document",
-      lastSnapshotAt: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setDocuments([newDoc, ...documents]);
-    navigate(`/documents/${newDoc.id}`);
+  const handleCreateDocument = async () => {
+    try {
+      const newDoc = await documentsApi.create({
+        title: "Untitled Document",
+        ownerId: "user-1", // TODO: Get from auth context
+      });
+      setDocuments([newDoc, ...documents]);
+      navigate(`/documents/${newDoc.id}`);
+    } catch (err) {
+      console.error("Error creating document:", err);
+      setError(err instanceof Error ? err.message : "Failed to create document");
+    }
   };
 
   const filteredDocuments = useMemo(() => {
@@ -128,7 +116,7 @@ export default function DocumentsPage() {
           </div>
 
           {/* Search and Filter Bar with Glassmorphism */}
-          {documents.length > 0 && (
+          {!isLoading && documents.length > 0 && (
             <div className="glass-card rounded-2xl p-4 shadow-xl">
               <div className="flex gap-3">
                 <div className="relative flex-1">
@@ -167,7 +155,35 @@ export default function DocumentsPage() {
           )}
         </div>
 
-        {documents.length === 0 ? (
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="rounded-full gradient-primary p-8 mb-6 shadow-glow">
+              <Loader2 className="h-16 w-16 text-white animate-spin" />
+            </div>
+            <h2 className="text-3xl font-semibold mb-3">Loading documents...</h2>
+            <p className="text-muted-foreground text-lg max-w-md">
+              Please wait while we fetch your documents
+            </p>
+          </div>
+        ) : error ? (
+          /* Error State */
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="rounded-full bg-destructive/20 p-8 mb-6">
+              <AlertCircle className="h-16 w-16 text-destructive" />
+            </div>
+            <h2 className="text-3xl font-semibold mb-3">Error loading documents</h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-md">
+              {error}
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="gradient-primary text-white"
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : documents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="rounded-full gradient-primary p-8 mb-6 shadow-glow">
               <FileText className="h-16 w-16 text-white" />
