@@ -2,18 +2,19 @@ import { createNodeWebSocket } from '@hono/node-ws';
 import { serve } from '@hono/node-server';
 import { createContainer } from './core/container';
 import { createApp } from './app';
+import { createCollaborationRoutes } from './modules/collaboration';
 
 // Initialize container (validates env, connects to DB)
 const container = createContainer();
 
-// Create WebSocket adapter first (with placeholder app)
-const { upgradeWebSocket } = createNodeWebSocket({ app: null as any });
+// Create the Hono app without WebSocket routes first
+const app = createApp(container);
 
-// Create the Hono app with container and WebSocket support
-const app = createApp(container, upgradeWebSocket);
+// Create WebSocket adapter with the app
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
-// Update WebSocket with the actual app
-const ws = createNodeWebSocket({ app });
+// Now add the collaboration routes with WebSocket support
+app.route('/collaboration', createCollaborationRoutes(container, upgradeWebSocket));
 
 // Start the server
 const port = container.env.PORT;
@@ -36,4 +37,4 @@ const server = serve(
 );
 
 // Inject WebSocket into the running server
-ws.injectWebSocket(server);
+injectWebSocket(server);

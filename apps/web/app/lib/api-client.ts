@@ -54,22 +54,4 @@ export const documentsApi = {
     }
     return await response.json();
   },
-
-  // TODO: Uncomment when backend implements PUT endpoint
-  // /**
-  //  * Update a document
-  //  * @param id - Document ID
-  //  * @param data - Partial document data to update
-  //  * @returns Updated document
-  //  */
-  // async update(id: string, data: Partial<Pick<Document, 'title'>>): Promise<Document> {
-  //   const response = await client.api.documents[':id'].$put({
-  //     param: { id },
-  //     json: data,
-  //   });
-  //   if (!response.ok) {
-  //     throw new Error(`Failed to update document: ${response.statusText}`);
-  //   }
-  //   return await response.json();
-  // },
 };
