@@ -84,6 +84,7 @@ export class CollaborationHandler {
 
       // Handle Sync Protocol
       if (messageType === messageSync) {
+        console.log(`[BE-WS] Received SYNC message for doc ${docId}`);
         encoding.writeVarUint(encoder, messageSync);
 
         // We need to load the doc to handle sync steps
@@ -98,7 +99,11 @@ export class CollaborationHandler {
           // Setup listener to capture *new* updates generated during this sync interaction
           // (e.g. if client sent updates, we need to save them)
           doc.on('update', async (update) => {
+            console.log(
+              `[BE-Handler] Received UPDATE from client. Size: ${update.length} bytes. Persisting...`,
+            );
             await this.storage.persistUpdate(docId, update);
+            console.log(`[BE-Handler] Update persisted to DB.`);
 
             // Broadcast update to other clients
             // (Optimization: exclude sender if possible, though Yjs handles echo efficiently)
@@ -106,6 +111,9 @@ export class CollaborationHandler {
             encoding.writeVarUint(replyEncoder, messageSync);
             syncProtocol.writeUpdate(replyEncoder, update);
             const reply = encoding.toUint8Array(replyEncoder);
+            console.log(
+              `[BE-Handler] Broadcasting update to room ${docId}. Size: ${reply.length} bytes`,
+            );
             this.roomsManager.broadcast(docId, reply, ws); // Broadcast to OTHERS
           });
 

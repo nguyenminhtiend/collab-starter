@@ -10,9 +10,11 @@ export class YjsStorage {
    * Persist a document update to the database.
    */
   async persistUpdate(docId: string, update: Uint8Array): Promise<void> {
+    const buffer = Buffer.from(update);
+    console.log(`[BE-DB] Persisting update to DB. DocId: ${docId}, Buffer Size: ${buffer.length}`);
     await this.db.insert(documentUpdates).values({
       docId,
-      update: Buffer.from(update),
+      update: buffer,
     });
   }
 

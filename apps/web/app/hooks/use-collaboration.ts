@@ -59,9 +59,18 @@ export function useCollaboration({
 
     // Handle connection error (y-websocket doesn't expose a clean error event,
     // but disconnections are handled above)
-    // We can also monitor sync
+    // Monitor sync
     newProvider.on('sync', (isSynced: boolean) => {
       console.log('Yjs synced:', isSynced);
+    });
+
+    // Monitor document updates (outgoing FROM client)
+    ydoc.on('update', (update: Uint8Array, origin: any) => {
+      console.log(`[FE] Doc update (origin: ${origin}) - Size: ${update.length} bytes`);
+      // origin is null if it's a local update, or the provider if it's remote
+      if (origin !== newProvider) {
+        console.log('[FE] Sending update to server:', update);
+      }
     });
 
     // Set awareness user info if provided
