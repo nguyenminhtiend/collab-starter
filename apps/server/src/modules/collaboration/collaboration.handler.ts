@@ -1,21 +1,26 @@
 import type { Context } from 'hono';
+import * as Y from 'yjs';
+import * as syncProtocol from 'y-protocols/sync';
+import * as awarenessProtocol from 'y-protocols/awareness';
+import * as encoding from 'lib0/encoding';
+import * as decoding from 'lib0/decoding';
 import type { Container } from '../../core/container';
-import * as collaborationService from './collaboration.service';
-import type {
-  IncomingMessage,
-  OutgoingMessage,
-  WSContext,
-  WSMessageEvent,
-} from './collaboration.types';
+import type { WSContext, WSMessageEvent } from './collaboration.types';
 import { RoomsManager } from './collaboration.rooms';
+import { YjsStorage } from './yjs.storage';
+
+const messageSync = 0;
+const messageAwareness = 1;
 
 export class CollaborationHandler {
   private roomsManager = new RoomsManager();
+  private storage: YjsStorage;
 
-  constructor(private container: Container) {}
+  constructor(private container: Container) {
+    this.storage = new YjsStorage(container.db);
+  }
 
   createWebSocketHandlers(c: Context) {
-    const { db, logger } = this.container;
     const docId = c.req.param('docId');
 
     return {
@@ -38,142 +43,117 @@ export class CollaborationHandler {
   }
 
   private handleOpen(docId: string, ws: WSContext) {
-    const { db, logger } = this.container;
+    const { logger } = this.container;
     logger.info({ docId }, 'WebSocket connection opened');
 
-    // Add client to document room
     this.roomsManager.addClient(docId, ws);
 
-    // Send initial snapshot and changes
     (async () => {
-      try {
-        const snapshot = await collaborationService.getLatestSnapshot(db, docId);
-        logger.info({ docId, hasSnapshot: !!snapshot }, 'Checked for existing snapshot');
+      // 1. Load the document from DB
+      const doc = await this.storage.loadDocument(docId);
 
-        if (snapshot) {
-          // Send existing snapshot
-          const snapshotMessage: OutgoingMessage = {
-            type: 'snapshot',
-            docId,
-            state: Array.from(new Uint8Array(snapshot.state)),
-            timestamp: snapshot.createdAt.toISOString(),
-          };
-          ws.send(JSON.stringify(snapshotMessage));
+      // 2. Start Sync Protocol STEP 1: Send the state vector to client
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, messageSync);
+      syncProtocol.writeSyncStep1(encoder, doc);
+      const message = encoding.toUint8Array(encoder);
 
-          // Send changes since snapshot
-          const changes = await collaborationService.getChangesSince(db, docId, snapshot.createdAt);
-
-          if (changes.length > 0) {
-            const changesMessage: OutgoingMessage = {
-              type: 'changes',
-              docId,
-              changes: changes.map((change) => ({
-                id: change.id,
-                data: Array.from(new Uint8Array(change.data)),
-                userId: change.userId,
-                createdAt: change.createdAt.toISOString(),
-              })),
-            };
-            ws.send(JSON.stringify(changesMessage));
-          }
-        } else {
-          // No snapshot - send empty snapshot first, then all changes
-          const emptySnapshotMessage: OutgoingMessage = {
-            type: 'snapshot',
-            docId,
-            state: [],
-            timestamp: new Date().toISOString(),
-          };
-          ws.send(JSON.stringify(emptySnapshotMessage));
-
-          // Fetch and send all changes for this document
-          const changes = await collaborationService.getAllChanges(db, docId);
-          logger.info({ docId, changesCount: changes.length }, 'Fetched all changes (no snapshot)');
-
-          if (changes.length > 0) {
-            const changesMessage: OutgoingMessage = {
-              type: 'changes',
-              docId,
-              changes: changes.map((change) => ({
-                id: change.id,
-                data: Array.from(new Uint8Array(change.data)),
-                userId: change.userId,
-                createdAt: change.createdAt.toISOString(),
-              })),
-            };
-            ws.send(JSON.stringify(changesMessage));
-          }
-        }
-      } catch (error) {
-        logger.error({ error, docId }, 'Error sending initial data');
-      }
+      ws.send(message);
     })();
   }
 
   private handleMessage(docId: string, event: WSMessageEvent, ws: WSContext) {
-    const { db, logger } = this.container;
+    const { logger } = this.container;
+
+    // Yjs protocols operate on binary data
+    // Hono/node-ws might give us a Buffer or ArrayBuffer or string
+    let buffer: Uint8Array;
+    if (event.data instanceof ArrayBuffer) {
+      buffer = new Uint8Array(event.data);
+    } else if (Buffer.isBuffer(event.data)) {
+      buffer = new Uint8Array(event.data);
+    } else {
+      // Should handle string case check if needed, but Yjs usually sends binary
+      // If it's a string, it might be legacy JSON or base64?
+      // For now assuming binary protocol
+      return;
+    }
 
     try {
-      const message = JSON.parse(event.data.toString()) as IncomingMessage;
+      const decoder = decoding.createDecoder(buffer);
+      const encoder = encoding.createEncoder();
+      const messageType = decoding.readVarUint(decoder);
 
-      if (message.type === 'update') {
-        // Save the change to the database
+      // Handle Sync Protocol
+      if (messageType === messageSync) {
+        encoding.writeVarUint(encoder, messageSync);
+
+        // We need to load the doc to handle sync steps
+        // Ideally we cache this doc in memory (e.g. in RoomsManager)
+        // effectively making this stateful server for active docs
+        // For this implementation, we load/reconstruct it.
+        // Optimization: In a real app complexity increases here:
+        // we'd want to keep the Y.Doc instance in memory for as long as users are connected.
         (async () => {
-          try {
-            const buffer = Buffer.from(message.data);
-            const savedChange = await collaborationService.saveChange(
-              db,
-              docId,
-              buffer,
-              message.userId,
-            );
+          const doc = await this.storage.loadDocument(docId);
 
-            // Broadcast to all clients in the room except sender
-            const changesMessage: OutgoingMessage = {
-              type: 'changes',
-              docId,
-              changes: [
-                {
-                  id: savedChange.id,
-                  data: Array.from(new Uint8Array(savedChange.data)),
-                  userId: savedChange.userId,
-                  createdAt: savedChange.createdAt.toISOString(),
-                },
-              ],
-            };
+          // Setup listener to capture *new* updates generated during this sync interaction
+          // (e.g. if client sent updates, we need to save them)
+          doc.on('update', async (update) => {
+            await this.storage.persistUpdate(docId, update);
 
-            const messageStr = JSON.stringify(changesMessage);
-            this.roomsManager.broadcast(docId, messageStr, ws);
+            // Broadcast update to other clients
+            // (Optimization: exclude sender if possible, though Yjs handles echo efficiently)
+            const replyEncoder = encoding.createEncoder();
+            encoding.writeVarUint(replyEncoder, messageSync);
+            syncProtocol.writeUpdate(replyEncoder, update);
+            const reply = encoding.toUint8Array(replyEncoder);
+            this.roomsManager.broadcast(docId, reply, ws); // Broadcast to OTHERS
+          });
 
-            // Send ack back to sender
-            const ackMessage: OutgoingMessage = {
-              type: 'ack',
-              docId,
-              changeId: savedChange.id,
-            };
-            ws.send(JSON.stringify(ackMessage));
-          } catch (error) {
-            logger.error({ error });
-            logger.error({ error, docId }, 'Error processing update');
+          syncProtocol.readSyncMessage(decoder, encoder, doc, null);
+
+          // If the sync protocol generated a response (e.g. SyncStep2 or Update), send it back
+          if (encoding.length(encoder) > 1) {
+            ws.send(encoding.toUint8Array(encoder));
           }
         })();
       }
+      // Handle Awareness Protocol
+      else if (messageType === messageAwareness) {
+        // Just broadcast awareness messages to everyone else
+        // We don't persist awareness state to DB usually
+        const buff = encoding.toUint8Array(encoder); // this might be empty as we read from decoder
+        // Re-encode or just forward raw buffer if we knew the slice?
+        // Safer to broadcast raw message content if we can, but simpler here:
+        this.roomsManager.broadcast(docId, buffer, ws);
+      }
     } catch (error) {
-      logger.error({ error, docId }, 'Error parsing message');
+      logger.error({ error, docId }, 'Error processing message');
     }
   }
 
-  private handleClose(docId: string, ws: WSContext) {
+  private async handleClose(docId: string, ws: WSContext) {
     const { logger } = this.container;
     logger.info({ docId }, 'WebSocket connection closed');
 
-    // Remove client from document room
     this.roomsManager.removeClient(docId, ws);
+
+    // When last client disconnects, create a snapshot to compact updates
+    if (this.roomsManager.getRoomSize(docId) === 0) {
+      logger.info({ docId }, 'Last client disconnected, creating snapshot...');
+      try {
+        const doc = await this.storage.loadDocument(docId);
+        await this.storage.snapshot(docId, doc);
+        logger.info({ docId }, 'Snapshot created successfully');
+      } catch (error) {
+        logger.error({ error, docId }, 'Failed to create snapshot');
+      }
+    }
   }
 
   private handleError(docId: string, event: Event) {
-    const { logger } = this.container;
     const error = event instanceof ErrorEvent ? event.error : event;
-    logger.error({ error, docId }, 'WebSocket error');
+    this.container.logger.error({ error, docId }, 'WebSocket error');
   }
 }

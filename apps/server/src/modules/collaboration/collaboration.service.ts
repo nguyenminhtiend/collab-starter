@@ -1,6 +1,6 @@
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { desc, eq, and, gt } from 'drizzle-orm';
-import { documents, documentChanges, snapshots } from '../../db/schema/documents';
+import { documents, documentUpdates, snapshots } from '../../db/schema/documents';
 import type * as schema from '../../db/schema';
 
 export const getLatestSnapshot = async (db: PostgresJsDatabase<typeof schema>, docId: string) => {
@@ -21,17 +21,17 @@ export const getChangesSince = async (
 ) => {
   return db
     .select()
-    .from(documentChanges)
-    .where(and(eq(documentChanges.docId, docId), gt(documentChanges.createdAt, since)))
-    .orderBy(documentChanges.createdAt);
+    .from(documentUpdates)
+    .where(and(eq(documentUpdates.docId, docId), gt(documentUpdates.createdAt, since)))
+    .orderBy(documentUpdates.createdAt);
 };
 
 export const getAllChanges = async (db: PostgresJsDatabase<typeof schema>, docId: string) => {
   return db
     .select()
-    .from(documentChanges)
-    .where(eq(documentChanges.docId, docId))
-    .orderBy(documentChanges.createdAt);
+    .from(documentUpdates)
+    .where(eq(documentUpdates.docId, docId))
+    .orderBy(documentUpdates.createdAt);
 };
 
 export const saveChange = async (
@@ -41,11 +41,10 @@ export const saveChange = async (
   userId?: string,
 ) => {
   const result = await db
-    .insert(documentChanges)
+    .insert(documentUpdates)
     .values({
       docId,
-      data,
-      userId: userId || null,
+      update: data,
     })
     .returning();
 

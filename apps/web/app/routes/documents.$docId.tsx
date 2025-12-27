@@ -7,73 +7,32 @@ import { ConnectionStatusBadge } from "@/components/editor/connection-status";
 import { useCollaboration } from "@/hooks/use-collaboration";
 import { documentsApi } from "@/lib/api-client";
 import type { Document } from "@collab/types";
-import type { SnapshotMessage, ChangesMessage, AckMessage } from "@/lib/collaboration.types";
 
 export default function DocumentEditorPage() {
   const { docId } = useParams<{ docId: string }>();
   const navigate = useNavigate();
 
   const [document, setDocument] = useState<Document | null>(null);
-  const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Track last saved time (for UI display only - Yjs saves automatically)
   const lastSavedRef = useRef<Date>(new Date());
 
-  // Handle snapshot from WebSocket
-  const handleSnapshot = useCallback((snapshot: SnapshotMessage) => {
-    console.log("Received snapshot:", snapshot);
-    const decoder = new TextDecoder();
-    const state = new Uint8Array(snapshot.state);
-    const decodedContent = decoder.decode(state);
-    setContent(decodedContent);
-  }, []);
-
-  // Handle changes from WebSocket
-  const handleChanges = useCallback((changes: ChangesMessage) => {
-    console.log("Received changes:", changes);
-    // Apply changes to the document content
-    // Since we're using simple text replacement (not OT/CRDT), take the last change
-    if (changes.changes.length > 0) {
-      const lastChange = changes.changes[changes.changes.length - 1];
-      const decoder = new TextDecoder();
-      const data = new Uint8Array(lastChange.data);
-      const decodedContent = decoder.decode(data);
-      setContent(decodedContent);
-    }
-  }, []);
-
-  // Handle acknowledgment from WebSocket
-  const handleAck = useCallback((ack: AckMessage) => {
-    console.log("Received ack:", ack);
-    lastSavedRef.current = new Date();
-  }, []);
-
-  // Handle WebSocket errors
-  const handleError = useCallback((err: Error) => {
-    console.error("WebSocket error:", err);
-    // Only set error if it's a critical failure, not transient connection issues
-    // The auto-reconnect will handle temporary disconnections
-  }, []);
-
-  // Initialize WebSocket collaboration
-  const { status, sendUpdate, reconnect } = useCollaboration({
+  // Initialize WebSocket collaboration via Yjs
+  const { status, ydoc, provider } = useCollaboration({
     docId: docId || "",
     userId: "019b589a-0000-7000-8000-000000000001", // TODO: Get from auth context
-    onSnapshot: handleSnapshot,
-    onChanges: handleChanges,
-    onAck: handleAck,
-    onError: handleError,
   });
 
-  // Clear WebSocket errors when connection is established
-  useEffect(() => {
-    if (status === 'connected') {
-      // Clear any previous WebSocket-related errors
-      setError(null);
+  // Reconnect logic (handled by provider mostly, but exposed for manual trigger)
+  const handleReconnect = useCallback(() => {
+    if (provider) {
+        provider.connect();
     }
-  }, [status]);
+  }, [provider]);
 
-  // Fetch document details on mount
+  // Fetch document details on mount (metadata only)
   useEffect(() => {
     if (!docId) {
       navigate("/documents");
@@ -107,35 +66,6 @@ export default function DocumentEditorPage() {
     },
     [document]
   );
-
-  // Debounce content changes before sending via WebSocket
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleContentChange = useCallback(
-    (newContent: string) => {
-      setContent(newContent);
-
-      // Clear existing timeout
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-
-      // Debounce WebSocket updates
-      debounceTimeoutRef.current = setTimeout(() => {
-        sendUpdate(newContent);
-      }, 500);
-    },
-    [sendUpdate]
-  );
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, []);
 
   if (!docId) {
     return null;
@@ -175,17 +105,27 @@ export default function DocumentEditorPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-muted/30">
       <EditorHeader
         documentId={docId}
         title={document?.title || "Untitled Document"}
         onTitleChange={handleTitleChange}
         lastSaved={lastSavedRef.current}
       >
-        <ConnectionStatusBadge status={status} onReconnect={reconnect} />
+        <ConnectionStatusBadge status={status} onReconnect={handleReconnect} />
       </EditorHeader>
-      <EditorToolbar />
-      <TextEditor content={content} onChange={handleContentChange} />
+
+      {/* Centered toolbar */}
+      <div className="max-w-4xl mx-auto w-full">
+        <EditorToolbar />
+      </div>
+
+      {/* Editor area with paper-like styling */}
+      <div className="flex-1 overflow-hidden py-6">
+        <div className="h-full max-w-4xl mx-auto bg-background border border-border/50 rounded-lg shadow-sm">
+          <TextEditor ydoc={ydoc} provider={provider} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -68,8 +68,8 @@ export function EditorToolbar() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="border-b glass-card backdrop-blur-xl sticky top-[73px] z-40">
-        <div className="flex items-center gap-1 p-2 px-4">
+      <div className="border border-border/50 bg-background/80 backdrop-blur-xl rounded-lg shadow-sm my-4">
+        <div className="flex items-center justify-center gap-1 p-2 px-4">
           {/* History */}
           <div className="flex items-center gap-0.5">
             <ToolbarButton

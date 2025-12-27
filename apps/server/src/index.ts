@@ -20,12 +20,18 @@ const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 const collabHandler = new CollaborationHandler(container);
 
+app.get('/health', (c) => c.json({ status: 'ok' }));
+
+app.use('*', async (c, next) => {
+  console.log(`[DEBUG] Incoming request: ${c.req.method} ${c.req.url}`);
+  await next();
+});
+
 app.get(
   '/collaboration/:docId',
   upgradeWebSocket((c) => {
     const docId = c.req.param('docId');
-    const origin = c.req.header('origin');
-    container.logger.info({ docId, origin }, 'WebSocket upgrade request received');
+    console.log(`[DEBUG] WebSocket Upgrade Request for docId: ${docId}`);
     return collabHandler.createWebSocketHandlers(c);
   }),
 );

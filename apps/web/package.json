@@ -17,6 +17,13 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-router/node": "7.10.1",
     "@react-router/serve": "7.10.1",
+    "@floating-ui/dom": "^1.6.13",
+    "@tiptap/core": "^3.14.0",
+    "@tiptap/extension-collaboration": "^3.14.0",
+    "@tiptap/extension-collaboration-caret": "^3.14.0",
+    "@tiptap/pm": "^3.14.0",
+    "@tiptap/react": "^3.14.0",
+    "@tiptap/starter-kit": "^3.14.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "hono": "^4.11.1",
@@ -25,7 +32,10 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router": "7.10.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.28"
   },
   "devDependencies": {
     "@react-router/dev": "7.10.1",

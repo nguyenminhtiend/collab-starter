@@ -16,8 +16,8 @@ export const documents = pgTable('documents', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const documentChanges = pgTable(
-  'document_changes',
+export const documentUpdates = pgTable(
+  'document_updates',
   {
     id: uuid('id')
       .default(sql`uuidv7()`)
@@ -25,11 +25,10 @@ export const documentChanges = pgTable(
     docId: uuid('doc_id')
       .notNull()
       .references(() => documents.id, { onDelete: 'cascade' }),
-    data: bytea('data').notNull(),
-    userId: uuid('user_id'),
+    update: bytea('update').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index('idx_changes_fetch').on(table.docId, table.createdAt)],
+  (table) => [index('idx_updates_fetch').on(table.docId)],
 );
 
 export const snapshots = pgTable(

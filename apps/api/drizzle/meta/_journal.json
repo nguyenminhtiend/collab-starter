@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1766675816997,
-      "tag": "0000_puzzling_master_mold",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1766682006767,
-      "tag": "0001_organic_paibok",
+      "when": 1766762919633,
+      "tag": "0000_whole_meteorite",
       "breakpoints": true
     }
   ]

@@ -11,4 +11,12 @@ export default defineConfig({
     },
   },
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  server: {
+    proxy: {
+      '/collaboration': {
+        target: 'ws://localhost:3001',
+        ws: true,
+      },
+    },
+  },
 });

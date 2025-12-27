@@ -1,190 +1,93 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 import { ConnectionStatus } from '@/lib/collaboration.types';
-import type {
-  IncomingMessage,
-  SnapshotMessage,
-  ChangesMessage,
-  AckMessage,
-} from '@/lib/collaboration.types';
 
 interface UseCollaborationOptions {
   docId: string;
-  userId?: string;
-  onSnapshot?: (snapshot: SnapshotMessage) => void;
-  onChanges?: (changes: ChangesMessage) => void;
-  onAck?: (ack: AckMessage) => void;
-  onError?: (error: Error) => void;
+  userId?: string; // Used for awareness
+  initialContent?: string;
 }
 
 interface UseCollaborationReturn {
   status: ConnectionStatus;
-  sendUpdate: (content: string) => void;
-  disconnect: () => void;
-  reconnect: () => void;
+  ydoc: Y.Doc;
+  provider: WebsocketProvider | null;
 }
-
-const getWebSocketUrl = () => {
-  // Use VITE_WS_URL from environment (required in development, optional in production)
-  if (import.meta.env.VITE_WS_URL) {
-    return import.meta.env.VITE_WS_URL;
-  }
-  // In production without VITE_WS_URL, fall back to same-origin WebSocket
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
-  }
-  throw new Error('VITE_WS_URL environment variable is required');
-};
-const RECONNECT_DELAY = 3000;
-const MAX_RECONNECT_ATTEMPTS = 5;
 
 export function useCollaboration({
   docId,
   userId,
-  onSnapshot,
-  onChanges,
-  onAck,
-  onError,
 }: UseCollaborationOptions): UseCollaborationReturn {
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.CONNECTING);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [ydoc] = useState(() => new Y.Doc());
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
 
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setStatus(ConnectionStatus.DISCONNECTED);
-  }, []);
-
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data) as IncomingMessage;
-
-        switch (message.type) {
-          case 'snapshot':
-            onSnapshot?.(message);
-            break;
-          case 'changes':
-            onChanges?.(message);
-            break;
-          case 'ack':
-            onAck?.(message);
-            break;
-        }
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
-        onError?.(error instanceof Error ? error : new Error('Failed to parse message'));
-      }
-    },
-    [onSnapshot, onChanges, onAck, onError],
-  );
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    setStatus(ConnectionStatus.CONNECTING);
-
-    try {
-      const ws = new WebSocket(`${getWebSocketUrl()}/collaboration/${docId}`);
-
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        setStatus(ConnectionStatus.CONNECTED);
-        reconnectAttemptsRef.current = 0;
-      };
-
-      ws.onmessage = handleMessage;
-
-      ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        setStatus(ConnectionStatus.ERROR);
-        const error = new Error('WebSocket connection error');
-        onError?.(error);
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket closed');
-        setStatus(ConnectionStatus.DISCONNECTED);
-        wsRef.current = null;
-
-        // Auto-reconnect logic
-        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-          reconnectAttemptsRef.current++;
-          console.log(
-            `Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`,
-          );
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, RECONNECT_DELAY);
-        } else {
-          console.error('Max reconnection attempts reached');
-          setStatus(ConnectionStatus.ERROR);
-          onError?.(new Error('Failed to reconnect after maximum attempts'));
-        }
-      };
-
-      wsRef.current = ws;
-    } catch (error) {
-      console.error('Failed to create WebSocket:', error);
-      setStatus(ConnectionStatus.ERROR);
-      onError?.(error instanceof Error ? error : new Error('Failed to create WebSocket'));
-    }
-  }, [docId, handleMessage, onError]);
-
-  const sendUpdate = useCallback(
-    (content: string) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(content);
-
-        const message = {
-          type: 'update',
-          docId,
-          data: Array.from(data), // Convert Uint8Array to regular array for JSON
-          userId,
-        };
-
-        wsRef.current.send(JSON.stringify(message));
-      } else {
-        console.warn('WebSocket is not open, cannot send update');
-      }
-    },
-    [docId, userId],
-  );
-
-  const reconnect = useCallback(() => {
-    disconnect();
-    reconnectAttemptsRef.current = 0;
-    connect();
-  }, [connect, disconnect]);
-
-  // Connect on mount
   useEffect(() => {
-    connect();
+    if (!docId) return;
 
-    // Cleanup on unmount
-    return () => {
-      disconnect();
+    // Get WS URL
+    const getUrl = () => {
+      if (import.meta.env.VITE_WS_URL) {
+        return import.meta.env.VITE_WS_URL;
+      }
+      if (typeof window !== 'undefined') {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${window.location.host}`;
+      }
+      return 'ws://localhost:3001';
     };
-  }, [connect, disconnect]);
+
+    const wsUrl = `${getUrl()}/collaboration`;
+    console.log('Connecting to Yjs WS:', wsUrl, 'Room:', docId);
+
+    // Initialize provider
+    const newProvider = new WebsocketProvider(wsUrl, docId, ydoc, {
+      connect: true,
+      params: {}, // can pass auth params here
+      WebSocketPolyfill: WebSocket, // Force standard WebSocket
+      maxBackoffTime: 10000,
+    });
+
+    // Handle connection status
+    newProvider.on('status', (event: { status: 'connecting' | 'connected' | 'disconnected' }) => {
+      console.log('Yjs status:', event.status);
+      setStatus(
+        event.status === 'connected'
+          ? ConnectionStatus.CONNECTED
+          : event.status === 'connecting'
+          ? ConnectionStatus.CONNECTING
+          : ConnectionStatus.DISCONNECTED,
+      );
+    });
+
+    // Handle connection error (y-websocket doesn't expose a clean error event,
+    // but disconnections are handled above)
+    // We can also monitor sync
+    newProvider.on('sync', (isSynced: boolean) => {
+      console.log('Yjs synced:', isSynced);
+    });
+
+    // Set awareness user info if provided
+    if (userId) {
+      newProvider.awareness.setLocalStateField('user', {
+        id: userId,
+        name: 'Anonymous', // TODO: Fetch real user name
+        color: '#' + Math.floor(Math.random() * 16777215).toString(16), // Random color
+      });
+    }
+
+    setProvider(newProvider);
+
+    return () => {
+      console.log('Disconnecting Yjs provider');
+      newProvider.destroy();
+    };
+  }, [docId, ydoc, userId]);
 
   return {
     status,
-    sendUpdate,
-    disconnect,
-    reconnect,
+    ydoc,
+    provider,
   };
 }

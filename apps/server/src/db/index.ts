@@ -33,8 +33,8 @@ export const createDb = (
     logger:
       env.NODE_ENV === 'development'
         ? {
-            logQuery: (query, params) => {
-              logger.info({ query, params }, 'SQL Query');
+            logQuery: (query) => {
+              logger.info({ query }, 'SQL Query');
             },
           }
         : false,

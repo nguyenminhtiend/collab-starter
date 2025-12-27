@@ -39,13 +39,13 @@ export class RoomsManager {
   /**
    * Broadcast a message to all clients in a room except the sender
    */
-  broadcast(docId: string, message: string, excludeWs?: WSContext): void {
+  broadcast(docId: string, message: string | Uint8Array, excludeWs?: WSContext): void {
     const clients = this.rooms.get(docId);
     if (clients) {
       clients.forEach((client) => {
         if (client !== excludeWs && client.readyState === 1) {
           // 1 = OPEN
-          client.send(message);
+          client.send(message as any);
         }
       });
     }
