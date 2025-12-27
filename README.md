@@ -1,193 +1,251 @@
-# Project Plan: Real-time Collaboration Tool (Modular Monolith)
+# Collab Starter
 
-**Goal:** Build a high-performance, real-time collaboration engine (similar to Figma/Google Docs) capable of handling concurrent editing with low latency.
+A real-time collaborative document editing application built with modern web technologies. Features live multi-user editing powered by Yjs CRDT (Conflict-free Replicated Data Types) and WebSocket communication.
 
-**Architecture:** Modular Monolith
-**Repo Strategy:** Monorepo (pnpm workspaces)
-**Environment Manager:** mise
+## ✨ Features
 
----
+- **Real-time Collaboration** - Multiple users can edit the same document simultaneously
+- **Rich Text Editor** - Powered by TipTap with full formatting support
+- **Conflict Resolution** - Uses Yjs CRDT for seamless merge of concurrent edits
+- **Document Management** - Create, list, and manage documents via REST API
+- **Persistent Storage** - PostgreSQL database with Drizzle ORM
+- **Type-Safe** - End-to-end TypeScript with shared type definitions
 
-## 1. Technology Stack
+## 🏗️ Architecture
 
-| Component          | Technology           | Rationale                                                                   |
-| :----------------- | :------------------- | :-------------------------------------------------------------------------- |
-| **Env Management** | **mise**             | Unified version management for Node, Bun, and tools via `mise.toml`.        |
-| **Runtime**        | **Node.js 24 (LTS)** | Production stability, native WebSocket optimizations, mature observability. |
-| **Build/Tooling**  | **pnpm**             | efficient, determinstic package manager.                                    |
-| **API Framework**  | **Hono**             | Standards-based, type-safe RPC, runs on Node adapter (`@hono/node-server`). |
-| **WebSockets**     | **`@hono/node-ws`**  | Wraps the battle-tested `ws` library for stability.                         |
-| **Frontend**       | **React Router v7**  | SPA Mode. No SSR/Hydration overhead for the heavy client editor.            |
-| **Database**       | **PostgreSQL 18**    | Leveraging Native **UUIDv7** keys and **Async I/O** for write throughput.   |
-| **ORM**            | **Drizzle ORM**      | Lightweight, SQL-like, 0-runtime overhead.                                  |
-| **Logging**        | **Pino**             | Structured JSON logging with `requestId` tracing via `hono-pino`.           |
-| **Testing**        | **Vitest**           | Fast parallel testing with Database Template Cloning.                       |
+This is a monorepo managed with pnpm workspaces, structured as follows:
 
----
-
-## 2. Environment Setup
-
-We use **mise** to lock tool versions across the team and CI.
-
-**`mise.toml`** configuration:
-
-```toml
-[tools]
-node = "24"
-
-pnpm = "latest"
+```
+collab-starter/
+├── apps/
+│   ├── api/        # REST API server (Hono)
+│   ├── server/     # WebSocket collaboration server (Hono + Yjs)
+│   └── web/        # Frontend application (React Router + TipTap)
+├── packages/
+│   ├── db/         # Shared database client & schema (Drizzle)
+│   └── types/      # Shared TypeScript types & Zod schemas
+└── mise.toml       # Task runner configuration
 ```
 
-**Workflow:**
+### Tech Stack
+
+| Layer                | Technology                                      |
+| -------------------- | ----------------------------------------------- |
+| **Frontend**         | React 19, React Router 7, TipTap, TailwindCSS 4 |
+| **API Server**       | Hono, Zod validation, Pino logging              |
+| **WebSocket Server** | Hono, Yjs, Y-Protocols                          |
+| **Database**         | PostgreSQL, Drizzle ORM                         |
+| **Monorepo**         | pnpm workspaces                                 |
+| **Runtime**          | Node.js 24                                      |
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) v24+
+- [pnpm](https://pnpm.io/) v10+
+- [mise](https://mise.jdx.dev/) (optional, for task management)
+- PostgreSQL database
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd collab-starter
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Set up environment variables**
+
+   Create `.env` files in `apps/api` and `apps/server`:
+
+   ```bash
+   # apps/api/.env
+   DATABASE_URL=postgres://user:password@localhost:5432/collab
+   PORT=3000
+   LOG_SQL=false
+
+   # apps/server/.env
+   DATABASE_URL=postgres://user:password@localhost:5432/collab
+   WS_PORT=3001
+   ```
+
+4. **Run database migrations**
+
+   ```bash
+   mise run db:migrate
+   # or
+   pnpm --filter api db:migrate
+   ```
+
+5. **Seed the database (optional)**
+   ```bash
+   mise run db:seed
+   # or
+   pnpm --filter api db:seed
+   ```
+
+### Development
+
+Start all servers using mise:
 
 ```bash
-# Install tools
-mise install
+# Start API and WebSocket servers
+mise run dev
 
-# Initialize Monorepo
-pnpm init
+# Start web frontend (in a separate terminal)
+mise run dev:web
 ```
 
-## 3. Monorepo Structure
+Or start individual services:
 
-```plaintext
-/root
-├── package.json              # { "type": "module" }
-├── pnpm-workspace.yaml
-├── mise.toml
-├── apps/
-│   ├── web/                  # React Router v7 (SPA)
-│   └── api/                  # Hono + Node 24
-│       ├── src/
-│       │   ├── container.ts  # Raw DI Container
-│       │   ├── index.ts      # Server Entry
-│       │   └── modules/      # Vertical Slices (Auth, Doc, etc.)
-└── packages/
-    ├── database/             # Drizzle Schema & Client
-    ├── testing/              # Isolated DB Test Utilities
-    └── shared-types/         # RPC Types shared between API/Web
+```bash
+# API server (port 3000)
+mise run dev:api
+
+# WebSocket server (port 3001)
+mise run dev:ws
+
+# Web frontend (port 5173)
+mise run dev:web
 ```
 
-## 4. Database Design (PostgreSQL 18)
+Using pnpm directly:
 
-We use a "Polyglot-within-Postgres" strategy.
-
-### A. Operations Log (The "NoSQL" Table)
-
-Stores the high-velocity stream of edit events.
-
-**Table:** `operations`
-
-**Primary Key:** `(doc_id, version, created_at)`
-
-**Performance Tuning:**
-
-- **UUIDv7:** Time-ordered IDs to prevent B-Tree index fragmentation.
-- **Partitioning:** Range Partitioned by created_at (Monthly/Weekly).
-- **Async I/O:** Enabled (PG18 feature) to handle massive concurrent inserts.
-
-### B. Snapshots (The "Blob" Table)
-
-Stores full document state to speed up loading.
-
-**Table:** `snapshots`
-
-**Storage:** Relies on Postgres TOAST to compress large JSON/Binary blobs automatically.
-
-### C. Metadata
-
-Standard relational tables (users, permissions, workspaces).
-
-## 5. Application Architecture
-
-### Dependency Injection (Raw Code Pattern)
-
-We avoid heavy DI frameworks like NestJS. We use manual injection via a singleton container that holds the database connection.
-
-```typescript
-// apps/api/src/container.ts
-import { createDb } from '@my-app/database';
-
-export const container = {
-  // The only stateful singleton we manage
-  db: createDb(process.env.DATABASE_URL),
-};
+```bash
+pnpm --filter api dev      # API server
+pnpm --filter server dev   # WebSocket server
+pnpm --filter web dev      # Web frontend
 ```
 
-### Real-time Protocol (Hybrid)
+## 📁 Project Structure
 
-**Initial Load (HTTP):** `GET /documents/:id`
+### Apps
 
-- **Returns:** Snapshot (v100) + CatchUpOps (v101-v105).
-- **Why:** Fast first paint, cacheable.
+#### `apps/api` - REST API Server
 
-**Live Sync (WebSocket):** `/ws?docId=...`
+- Document CRUD operations
+- User management
+- Runs on port 3000 by default
 
-- **Upstream:** `edit_op` (Batched), `cursor_move` (Throttled).
-- **Downstream:** `remote_op`, `ack`, `presence_update`.
+#### `apps/server` - WebSocket Server
 
-**Conflict Resolution:**
+- Real-time collaboration via WebSocket
+- Yjs document synchronization
+- Snapshot and change persistence
+- Runs on port 3001 by default
 
-- Client keeps a "Pending" queue.
-- On remote conflict: `Undo Local -> Apply Remote -> Transform Local -> Redo Local`.
+#### `apps/web` - Frontend Application
 
-## 6. Testing Strategy (Template Cloning)
+- React Router for navigation
+- TipTap rich text editor with collaboration extensions
+- React Query for data fetching
+- Radix UI components with TailwindCSS
 
-We enable parallel execution of integration tests by giving every test file its own isolated database schema.
+### Packages
 
-**Global Setup:**
+#### `packages/db` - Database Package
 
-1. Drop/Create `test_template_db`.
-2. Run Drizzle Migrations ONCE on the template.
+- Drizzle ORM schema definitions
+- Database client configuration
+- Migration and seed scripts
 
-**Per Test File:**
+#### `packages/types` - Shared Types
 
-1. Run `CREATE DATABASE test_xyz TEMPLATE test_template_db`.
-2. Cost: ~20ms per file.
+- Zod schemas for validation
+- TypeScript type definitions
+- Shared between API, server, and web apps
 
-**Per Test Case:**
+## 🗄️ Database
 
-1. Run `TRUNCATE` on all tables.
-2. Cost: ~5ms per test.
+### Schema Overview
 
-## 7. Deployment (Hybrid Docker)
+- **users** - User accounts
+- **documents** - Document metadata (title, owner, timestamps)
+- **document_snapshots** - Yjs document state snapshots
+- **document_changes** - Incremental Yjs updates
 
-We use a multi-stage build to leverage Bun's speed for installing dependencies, but Node's image for running the production server.
+### Commands
 
-**Dockerfile Strategy:**
+```bash
+# Generate new migration
+mise run db:generate
 
-**Stage 1 (Builder):** `node:24-bookworm-slim`
+# Apply migrations
+mise run db:migrate
 
-- **Action:** `corepack enable && pnpm install --frozen-lockfile` & `pnpm run build`.
+# Seed sample data
+mise run db:seed
+```
 
-**Stage 2 (Runner):** `node:22-bookworm-slim` (Migrate to 24-bookworm when stable image exists).
+## 🔌 API Endpoints
 
-- **Action:** `node apps/api/dist/index.js`.
-- **Security:** Run as non-root node user.
+### Documents
 
-## 8. Implementation Roadmap
+| Method | Endpoint             | Description         |
+| ------ | -------------------- | ------------------- |
+| GET    | `/api/documents`     | List all documents  |
+| GET    | `/api/documents/:id` | Get document by ID  |
+| POST   | `/api/documents`     | Create new document |
+| PUT    | `/api/documents/:id` | Update document     |
+| DELETE | `/api/documents/:id` | Delete document     |
 
-### Phase 1: Foundation
+### WebSocket
 
-- [ ] Initialize Monorepo with mise and pnpm.
-- [ ] Setup `packages/database` with Drizzle & Postgres 18.
-- [ ] Setup `packages/testing` with Template Cloning logic.
-- [ ] Create `apps/api` with Hono + Node adapter.
+| Endpoint                                   | Description                      |
+| ------------------------------------------ | -------------------------------- |
+| `ws://localhost:3001/collaboration/:docId` | Real-time document collaboration |
 
-### Phase 2: Core Real-time
+## 🛠️ Scripts
 
-- [ ] Implement operations table with UUIDv7.
-- [ ] Setup WebSocket handler in Hono.
-- [ ] Implement "Snapshot + Replay" loading logic.
+### Root Level
 
-### Phase 3: Client & Collaboration
+```bash
+pnpm test      # Run tests across all packages
+pnpm build     # Build all packages
+pnpm dev:web   # Start web development server
+pnpm build:web # Build web for production
+```
 
-- [ ] Setup `apps/web` with React Router v7.
-- [ ] Implement Client-side State Machine (Connecting -> CatchUp -> Synced).
-- [ ] Implement Optimistic UI & Re-base logic.
+### Mise Tasks
 
-### Phase 4: Production Readiness
+```bash
+mise run dev         # Start API + WebSocket servers
+mise run dev:api     # Start API server only
+mise run dev:ws      # Start WebSocket server only
+mise run dev:web     # Start web frontend
+mise run db:generate # Generate DB migrations
+mise run db:migrate  # Run DB migrations
+mise run db:seed     # Seed database
+```
 
-- [ ] Setup Pino Logger with Request Tracing.
-- [ ] Configure Redis Pub/Sub for Presence (Cursors).
-- [ ] Finalize Dockerfile.
+## 📦 Building for Production
+
+```bash
+# Build all packages
+pnpm build
+
+# Build specific app
+pnpm --filter api build
+pnpm --filter server build
+pnpm --filter web build
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is private and not licensed for public distribution.
