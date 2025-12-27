@@ -17,14 +17,13 @@ export const createContainer = (): Container => {
 
   containerInstance = {
     db: createDb(env.DATABASE_URL, {
-      logger:
-        env.NODE_ENV === 'development'
-          ? {
-              logQuery: (query, params) => {
-                logger.info({ query, params }, 'SQL Query');
-              },
-            }
-          : false,
+      logger: env.LOG_SQL
+        ? {
+            logQuery: (query, params) => {
+              logger.info({ query, params }, 'SQL Query');
+            },
+          }
+        : false,
     }),
     logger,
     env,

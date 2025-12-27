@@ -6,6 +6,10 @@ const EnvSchema = z.object({
   WS_PORT: z.coerce.number().default(3001),
   DATABASE_URL: z.url(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  LOG_SQL: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export const env = EnvSchema.parse(process.env);
