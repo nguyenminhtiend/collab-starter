@@ -1,9 +1,8 @@
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { DbClient } from '@collab/db';
 import { desc, eq, and, gt } from 'drizzle-orm';
-import { documents, documentUpdates, snapshots } from '../../db/schema/documents';
-import type * as schema from '../../db/schema';
+import { documents, documentUpdates, snapshots } from '@collab/db';
 
-export const getLatestSnapshot = async (db: PostgresJsDatabase<typeof schema>, docId: string) => {
+export const getLatestSnapshot = async (db: DbClient, docId: string) => {
   const result = await db
     .select()
     .from(snapshots)
@@ -14,11 +13,7 @@ export const getLatestSnapshot = async (db: PostgresJsDatabase<typeof schema>, d
   return result[0] || null;
 };
 
-export const getChangesSince = async (
-  db: PostgresJsDatabase<typeof schema>,
-  docId: string,
-  since: Date,
-) => {
+export const getChangesSince = async (db: DbClient, docId: string, since: Date) => {
   return db
     .select()
     .from(documentUpdates)
@@ -26,7 +21,7 @@ export const getChangesSince = async (
     .orderBy(documentUpdates.createdAt);
 };
 
-export const getAllChanges = async (db: PostgresJsDatabase<typeof schema>, docId: string) => {
+export const getAllChanges = async (db: DbClient, docId: string) => {
   return db
     .select()
     .from(documentUpdates)
@@ -34,12 +29,7 @@ export const getAllChanges = async (db: PostgresJsDatabase<typeof schema>, docId
     .orderBy(documentUpdates.createdAt);
 };
 
-export const saveChange = async (
-  db: PostgresJsDatabase<typeof schema>,
-  docId: string,
-  data: Buffer,
-  userId?: string,
-) => {
+export const saveChange = async (db: DbClient, docId: string, data: Buffer, userId?: string) => {
   const result = await db
     .insert(documentUpdates)
     .values({
@@ -59,11 +49,7 @@ export const saveChange = async (
   return result[0];
 };
 
-export const createSnapshot = async (
-  db: PostgresJsDatabase<typeof schema>,
-  docId: string,
-  state: Buffer,
-) => {
+export const createSnapshot = async (db: DbClient, docId: string, state: Buffer) => {
   const result = await db
     .insert(snapshots)
     .values({

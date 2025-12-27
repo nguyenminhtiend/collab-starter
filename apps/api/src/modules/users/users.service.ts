@@ -1,15 +1,11 @@
 import { eq, count } from 'drizzle-orm';
 import { NotFoundError, ConflictError } from '../../core/errors';
-import { users } from '../../db/schema';
-import type { Database } from '../../db/types';
+import { users } from '@collab/db';
+import type { DbClient } from '@collab/db';
 import type { CreateUser, UpdateUser, ListUsersQuery } from './users.schemas';
 
-export const getUserById = async (db: Database, id: string) => {
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
+export const getUserById = async (db: DbClient, id: string) => {
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
 
   const user = result[0];
   if (!user) {
@@ -18,7 +14,7 @@ export const getUserById = async (db: Database, id: string) => {
   return user;
 };
 
-export const getAllUsers = async (db: Database, query: ListUsersQuery) => {
+export const getAllUsers = async (db: DbClient, query: ListUsersQuery) => {
   const [usersList, totalResult] = await Promise.all([
     db.select().from(users).limit(query.limit).offset(query.offset),
     db.select({ count: count() }).from(users),
@@ -32,12 +28,8 @@ export const getAllUsers = async (db: Database, query: ListUsersQuery) => {
   };
 };
 
-export const createUser = async (db: Database, data: CreateUser) => {
-  const existing = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, data.email))
-    .limit(1);
+export const createUser = async (db: DbClient, data: CreateUser) => {
+  const existing = await db.select().from(users).where(eq(users.email, data.email)).limit(1);
 
   if (existing[0]) {
     throw new ConflictError(`User with email '${data.email}' already exists`);
@@ -47,23 +39,15 @@ export const createUser = async (db: Database, data: CreateUser) => {
   return result[0]!;
 };
 
-export const updateUser = async (db: Database, id: string, data: UpdateUser) => {
-  const current = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
+export const updateUser = async (db: DbClient, id: string, data: UpdateUser) => {
+  const current = await db.select().from(users).where(eq(users.id, id)).limit(1);
 
   if (!current[0]) {
     throw new NotFoundError('User', id);
   }
 
   if (data.email) {
-    const existing = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, data.email))
-      .limit(1);
+    const existing = await db.select().from(users).where(eq(users.email, data.email)).limit(1);
 
     if (existing[0] && existing[0].id !== id) {
       throw new ConflictError(`User with email '${data.email}' already exists`);
@@ -79,11 +63,8 @@ export const updateUser = async (db: Database, id: string, data: UpdateUser) => 
   return result[0]!;
 };
 
-export const deleteUser = async (db: Database, id: string) => {
-  const result = await db
-    .delete(users)
-    .where(eq(users.id, id))
-    .returning();
+export const deleteUser = async (db: DbClient, id: string) => {
+  const result = await db.delete(users).where(eq(users.id, id)).returning();
 
   const deletedUser = result[0];
   if (!deletedUser) {

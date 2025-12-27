@@ -1,4 +1,4 @@
-import { createDb } from '../db';
+import { createDb } from '@collab/db';
 import { env, type Env } from './env';
 import { logger, type Logger } from './logger';
 
@@ -16,7 +16,16 @@ export const createContainer = (): Container => {
   }
 
   containerInstance = {
-    db: createDb(env.DATABASE_URL),
+    db: createDb(env.DATABASE_URL, {
+      logger:
+        env.NODE_ENV === 'development'
+          ? {
+              logQuery: (query, params) => {
+                logger.info({ query, params }, 'SQL Query');
+              },
+            }
+          : false,
+    }),
     logger,
     env,
   };

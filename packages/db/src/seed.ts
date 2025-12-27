@@ -1,6 +1,6 @@
-import { createDb } from './index';
-import { users } from './schema/users';
-import { documents, documentUpdates } from './schema/documents';
+import { createDb } from './client.js';
+import { users } from './schema/users.js';
+import { documents, documentUpdates } from './schema/documents.js';
 
 const seed = async () => {
   const connectionString = process.env.DATABASE_URL;
@@ -80,14 +80,8 @@ const seed = async () => {
     // Seed initial Yjs updates for documents
     console.log('🔄 Seeding initial Yjs state...');
 
-    // We need to import Yjs dynamically or assume it's available since this is a dev script
-    // For simplicity, we'll create a basic Yjs update manually or skip deep content seeding
-    // But since we want to demonstrate collaboration, let's try to add some content
-
     // NOTE: In a real seed, we'd use Y.Doc to generate the binary update
     // For now, we'll leave them empty which is valid (empty doc)
-    // The previous implementation used document_changes with full content,
-    // but now we use document_updates with Yjs binary.
 
     console.log('✅ Seeding completed successfully');
   } catch (error) {

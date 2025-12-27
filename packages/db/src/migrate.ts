@@ -1,7 +1,7 @@
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { createDb } from './index';
+import { createDb } from './client.js';
 
 const runMigrations = async () => {
   const connectionString = process.env.DATABASE_URL;
@@ -11,17 +11,22 @@ const runMigrations = async () => {
   }
 
   // Count migration files
+  // Assuming migrations are in '../drizzle' relative to compiled src (dist) or current working directory?
+  // Since we run this with tsx from package root, process.cwd() should be packages/db
   const migrationsFolder = join(process.cwd(), 'drizzle');
-  const migrationFiles = readdirSync(migrationsFolder).filter((f) => f.endsWith('.sql'));
 
-  console.log('🔄 Running migrations...');
-  console.log(`📁 Found ${migrationFiles.length} migration file(s) in ./drizzle`);
-
-  if (migrationFiles.length > 0) {
-    console.log('📋 Migration files:');
-    migrationFiles.forEach((file, index) => {
-      console.log(`   ${index + 1}. ${file}`);
-    });
+  try {
+    const migrationFiles = readdirSync(migrationsFolder).filter((f) => f.endsWith('.sql'));
+    console.log('🔄 Running migrations...');
+    console.log(`📁 Found ${migrationFiles.length} migration file(s) in ./drizzle`);
+    if (migrationFiles.length > 0) {
+      console.log('📋 Migration files:');
+      migrationFiles.forEach((file, index) => {
+        console.log(`   ${index + 1}. ${file}`);
+      });
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not list migration files from', migrationsFolder);
   }
 
   // Create db instance using the shared setup

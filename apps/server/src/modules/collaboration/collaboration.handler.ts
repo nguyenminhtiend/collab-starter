@@ -8,6 +8,12 @@ import type { Container } from '../../core/container';
 import type { WSContext, WSMessageEvent } from './collaboration.types';
 import { RoomsManager } from './collaboration.rooms';
 import { YjsStorage } from './yjs.storage';
+import {
+  saveChange,
+  createSnapshot,
+  getLatestSnapshot,
+  getChangesSince,
+} from './collaboration.service';
 
 const messageSync = 0;
 const messageAwareness = 1;
@@ -139,15 +145,19 @@ export class CollaborationHandler {
 
     this.roomsManager.removeClient(docId, ws);
 
-    // When last client disconnects, create a snapshot to compact updates
+    // When last client disconnects, check if we need to snapshot
     if (this.roomsManager.getRoomSize(docId) === 0) {
-      logger.info({ docId }, 'Last client disconnected, creating snapshot...');
-      try {
-        const doc = await this.storage.loadDocument(docId);
-        await this.storage.snapshot(docId, doc);
-        logger.info({ docId }, 'Snapshot created successfully');
-      } catch (error) {
-        logger.error({ error, docId }, 'Failed to create snapshot');
+      const shouldSnapshot = await this.storage.shouldSnapshot(docId);
+
+      if (shouldSnapshot) {
+        logger.info({ docId }, 'Last client disconnected, pending updates found. Compacting...');
+        try {
+          // Compact: Merge updates into snapshot and clean up
+          await this.storage.compact(docId);
+          logger.info({ docId }, 'Compaction successful');
+        } catch (error) {
+          logger.error({ error, docId }, 'Failed to compact');
+        }
       }
     }
   }

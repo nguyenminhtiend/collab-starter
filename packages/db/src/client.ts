@@ -1,13 +1,12 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schema';
-import { env } from '../core/env';
-import { logger } from '../core/logger';
+import * as schema from './schema/index.js';
 
 export type DbOptions = {
   max?: number;
   idleTimeout?: number;
   connectTimeout?: number;
+  logger?: boolean | { logQuery: (query: string, params: unknown[]) => void };
 };
 
 const defaultOptions: DbOptions = {
@@ -30,17 +29,8 @@ export const createDb = (
 
   return drizzle(client, {
     schema,
-    logger:
-      env.NODE_ENV === 'development'
-        ? {
-            logQuery: (query) => {
-              logger.info({ query }, 'SQL Query');
-            },
-          }
-        : false,
+    logger: options.logger,
   });
 };
 
-// Re-export schema and types
-export * from './schema';
-export * from './types';
+export type DbClient = PostgresJsDatabase<typeof schema>;
