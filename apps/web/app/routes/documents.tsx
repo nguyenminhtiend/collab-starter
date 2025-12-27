@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { DocumentCard } from "@/components/documents/document-card";
 import { CreateDocumentButton } from "@/components/documents/create-document-button";
@@ -18,42 +19,34 @@ type SortOption = "updated" | "title" | "created";
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: documents = [], isLoading, error } = useQuery({
+    queryKey: ["documents"],
+    queryFn: () => documentsApi.getAll(),
+  });
 
-  // Fetch documents on mount
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await documentsApi.getAll();
-        setDocuments(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load documents");
-        console.error("Error fetching documents:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const queryClient = useQueryClient();
 
-    fetchDocuments();
-  }, []);
+  const createDocumentMutation = useMutation({
+    mutationFn: (data: Parameters<typeof documentsApi.create>[0]) => documentsApi.create(data),
+    onSuccess: (newDoc) => {
+      queryClient.setQueryData<Document[]>(["documents"], (old) => {
+        return old ? [newDoc, ...old] : [newDoc];
+      });
+      navigate(`/documents/${newDoc.id}`);
+    },
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
 
   const handleCreateDocument = async () => {
     try {
-      const newDoc = await documentsApi.create({
+      createDocumentMutation.mutate({
         title: "Untitled Document",
         ownerId: "user-1", // TODO: Get from auth context
       });
-      setDocuments([newDoc, ...documents]);
-      navigate(`/documents/${newDoc.id}`);
     } catch (err) {
       console.error("Error creating document:", err);
-      setError(err instanceof Error ? err.message : "Failed to create document");
     }
   };
 
@@ -174,7 +167,7 @@ export default function DocumentsPage() {
             </div>
             <h2 className="text-3xl font-semibold mb-3">Error loading documents</h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-md">
-              {error}
+              {(error as Error)?.message || "An error occurred"}
             </p>
             <Button
               onClick={() => window.location.reload()}

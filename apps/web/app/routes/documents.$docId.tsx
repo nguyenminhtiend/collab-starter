@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router";
 import { EditorHeader } from "@/components/editor/editor-header";
 import { EditorToolbar } from "@/components/editor/toolbar";
@@ -12,9 +13,16 @@ export default function DocumentEditorPage() {
   const { docId } = useParams<{ docId: string }>();
   const navigate = useNavigate();
 
-  const [document, setDocument] = useState<Document | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: document, isLoading: loading, error } = useQuery({
+    queryKey: ["documents", docId],
+    queryFn: () => {
+        if (!docId) throw new Error("Document ID is required");
+        return documentsApi.getById(docId);
+    },
+    enabled: !!docId,
+  });
+
+  const queryClient = useQueryClient();
 
   // Track last saved time (for UI display only - Yjs saves automatically)
   const lastSavedRef = useRef<Date>(new Date());
@@ -32,39 +40,16 @@ export default function DocumentEditorPage() {
     }
   }, [provider]);
 
-  // Fetch document details on mount (metadata only)
-  useEffect(() => {
-    if (!docId) {
-      navigate("/documents");
-      return;
-    }
-
-    const fetchDocument = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const doc = await documentsApi.getById(docId);
-        setDocument(doc as Document);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load document";
-        setError(message);
-        console.error("Error fetching document:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDocument();
-  }, [docId, navigate]);
-
   const handleTitleChange = useCallback(
     (newTitle: string) => {
       if (!document) return;
       // TODO: Implement title update when backend PUT endpoint is ready
       // For now, just update local state
-      setDocument({ ...document, title: newTitle });
+      queryClient.setQueryData<Document>(["documents", docId], (old) => {
+        return old ? { ...old, title: newTitle } : old;
+      });
     },
-    [document]
+    [document, docId, queryClient]
   );
 
   if (!docId) {
@@ -92,7 +77,7 @@ export default function DocumentEditorPage() {
             <span className="text-destructive text-2xl">⚠️</span>
           </div>
           <h2 className="text-2xl font-display mb-2">Error loading document</h2>
-          <p className="text-muted-foreground mb-6">{error}</p>
+          <p className="text-muted-foreground mb-6">{(error as Error)?.message || "An error occurred"}</p>
           <button
             onClick={() => navigate("/documents")}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"

@@ -1,19 +1,11 @@
 import type { Context } from 'hono';
-import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
-import * as awarenessProtocol from 'y-protocols/awareness';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import type { Container } from '../../core/container';
 import type { WSContext, WSMessageEvent } from './collaboration.types';
 import { RoomsManager } from './collaboration.rooms';
 import { YjsStorage } from './yjs.storage';
-import {
-  saveChange,
-  createSnapshot,
-  getLatestSnapshot,
-  getChangesSince,
-} from './collaboration.service';
 
 const messageSync = 0;
 const messageAwareness = 1;
@@ -63,7 +55,7 @@ export class CollaborationHandler {
       encoding.writeVarUint(encoder, messageSync);
       syncProtocol.writeSyncStep1(encoder, doc);
       const message = encoding.toUint8Array(encoder);
-
+      console.log('Sending message', message);
       ws.send(message);
     })();
   }

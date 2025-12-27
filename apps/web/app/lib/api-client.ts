@@ -3,7 +3,8 @@ import type { AppType } from '@api/app';
 import type { Document, CreateDocument } from '@collab/types';
 
 // API Base URL - defaults to localhost:3000 where the Hono API runs
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// API Base URL - empty to use relative path (proxied)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Create typed Hono RPC client
 const client = hc<AppType>(API_BASE_URL);
